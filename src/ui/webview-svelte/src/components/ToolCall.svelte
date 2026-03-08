@@ -8,6 +8,7 @@
   import { vscode } from '../lib/vscode-bridge';
   import type { IconName } from '../lib/icons';
   import type { StandardizedToolResult } from '../types/message';
+  import { i18n } from '../stores/i18n.svelte';
 
   interface ErrorDiagnosis {
     category: 'model_input' | 'context_stale' | 'permission' | 'role_constraint' | 'runtime';
@@ -232,7 +233,7 @@
       case 'file_remove': {
         const paths = args.paths;
         if (Array.isArray(paths) && paths.length > 0) {
-          return paths.length === 1 ? String(paths[0]) : `${paths[0]} 等 ${paths.length} 个文件`;
+          return paths.length === 1 ? String(paths[0]) : i18n.t('toolCall.fileRemoveSummary', { firstFile: paths[0], count: paths.length });
         }
         return typeof args.path === 'string' ? args.path : '';
       }
@@ -302,16 +303,16 @@
     if (matches('file_context_stale', '[file_context_stale]')) {
       return {
         category: 'context_stale',
-        categoryLabel: '上下文过期',
-        ownerLabel: '归因：流程上下文',
-        hint: '先对目标文件执行一次 file_view，再基于最新内容重新生成 old_str 与行锚点。',
+        categoryLabel: i18n.t('toolCall.errorDiagnosis.contextStale.categoryLabel'),
+        ownerLabel: i18n.t('toolCall.errorDiagnosis.contextStale.ownerLabel'),
+        hint: i18n.t('toolCall.errorDiagnosis.contextStale.hint'),
       };
     }
 
     if (matches(
       'tool_rejected',
       'command rejected',
-      '参数解析失败',
+      'argument parse failed',
       'path is required',
       'old_str_1 is required',
       'old_str and new_str are identical',
@@ -321,19 +322,19 @@
     )) {
       return {
         category: 'model_input',
-        categoryLabel: '参数不匹配',
-        ownerLabel: '归因：LLM 参数',
-        hint: '工具参数或锚点与当前文件不匹配，需要重新读取文件并生成新的编辑参数。',
+        categoryLabel: i18n.t('toolCall.errorDiagnosis.modelInput.categoryLabel'),
+        ownerLabel: i18n.t('toolCall.errorDiagnosis.modelInput.ownerLabel'),
+        hint: i18n.t('toolCall.errorDiagnosis.modelInput.hint'),
       };
     }
 
     // 编排者角色约束（dispatch_task 引导）— 与用户权限无关，是系统架构层面的职责划分
-    if (matches('编排者', 'dispatch_task 委派', '深度模式下编排者')) {
+    if (matches('orchestrator', 'dispatch_task delegation', 'orchestrator cannot execute tools in deep mode')) {
       return {
         category: 'role_constraint',
-        categoryLabel: '角色约束',
-        ownerLabel: '归因：编排者职责边界',
-        hint: '编排者不执行此操作，应通过 dispatch_task 委派给 Worker。',
+        categoryLabel: i18n.t('toolCall.errorDiagnosis.roleConstraint.categoryLabel'),
+        ownerLabel: i18n.t('toolCall.errorDiagnosis.roleConstraint.ownerLabel'),
+        hint: i18n.t('toolCall.errorDiagnosis.roleConstraint.hint'),
       };
     }
 
@@ -342,17 +343,17 @@
     if (codeMatches('tool_blocked') || messageHead.includes('user denied tool authorization')) {
       return {
         category: 'permission',
-        categoryLabel: '权限拦截',
-        ownerLabel: '归因：权限策略',
-        hint: '当前操作被授权策略拦截，需要授权放行后再执行。',
+        categoryLabel: i18n.t('toolCall.errorDiagnosis.permission.categoryLabel'),
+        ownerLabel: i18n.t('toolCall.errorDiagnosis.permission.ownerLabel'),
+        hint: i18n.t('toolCall.errorDiagnosis.permission.hint'),
       };
     }
 
     return {
       category: 'runtime',
-      categoryLabel: '执行异常',
-      ownerLabel: '归因：工具执行链',
-      hint: '工具进入执行阶段后失败，请检查执行器日志或外部环境（保存、格式化、进程改写）。',
+      categoryLabel: i18n.t('toolCall.errorDiagnosis.runtime.categoryLabel'),
+      ownerLabel: i18n.t('toolCall.errorDiagnosis.runtime.ownerLabel'),
+      hint: i18n.t('toolCall.errorDiagnosis.runtime.hint'),
     };
   }
 
@@ -482,7 +483,7 @@
           {#if hasInput && !isMermaidTool && !isWaitForWorkersTool}
             <div class="tool-section">
               <div class="section-header">
-                <span class="section-label">输入</span>
+                <span class="section-label">{i18n.t('toolCall.section.input')}</span>
               </div>
               <pre class="section-content">{formatContent(input)}</pre>
             </div>
@@ -500,8 +501,8 @@
                 <WaitResultCard data={waitResultData} />
               {:else}
                 <div class="section-header">
-                  <span class="section-label">输出</span>
-                  <button class="copy-btn" onclick={copyOutput} title={copySuccess ? '已复制' : '复制输出'}>
+                  <span class="section-label">{i18n.t('toolCall.section.output')}</span>
+                  <button class="copy-btn" onclick={copyOutput} title={copySuccess ? i18n.t('toolCall.copySuccess') : i18n.t('toolCall.copyOutput')}>
                     <Icon name={copySuccess ? 'check' : 'copy'} size={12} />
                   </button>
                 </div>
@@ -519,7 +520,7 @@
           {#if hasError}
             <div class="tool-section error">
               <div class="section-header">
-                <span class="section-label">错误</span>
+                <span class="section-label">{i18n.t('toolCall.section.error')}</span>
                 {#if errorDiagnosis}
                   <span class="diagnosis-owner">{errorDiagnosis.ownerLabel}</span>
                 {/if}
@@ -534,7 +535,7 @@
           {#if duration}
             <div class="tool-meta">
               <Icon name="clock" size={12} />
-              耗时: <strong>{(duration / 1000).toFixed(2)}s</strong>
+              {i18n.t('toolCall.duration')} <strong>{(duration / 1000).toFixed(2)}s</strong>
             </div>
           {/if}
         </div>

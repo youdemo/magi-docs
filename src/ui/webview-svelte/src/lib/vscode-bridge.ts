@@ -165,3 +165,16 @@ export function getInitialSessionId(): string {
   }
   return '';
 }
+
+/**
+ * 获取初始 locale（由扩展宿主注入）
+ */
+export function getInitialLocale(): 'zh-CN' | 'en-US' | '' {
+  if (typeof window !== 'undefined') {
+    const locale = (window as unknown as { __INITIAL_LOCALE__?: string }).__INITIAL_LOCALE__;
+    if (locale === 'zh-CN' || locale === 'en-US') {
+      return locale;
+    }
+  }
+  return '';
+}

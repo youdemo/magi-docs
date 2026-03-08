@@ -9,6 +9,7 @@ import { logger, LogCategory } from '../../logging';
 import { fetchWithRetry, isRetryableNetworkError, toErrorMessage } from '../../tools/network-utils';
 import type { WebviewToExtensionMessage, WorkerSlot } from '../../types';
 import type { CommandHandler, CommandHandlerContext } from './types';
+import { t } from '../../i18n';
 
 type Msg<T extends string> = Extract<WebviewToExtensionMessage, { type: T }>;
 
@@ -158,13 +159,13 @@ export class ConfigCommandHandler implements CommandHandler {
       }
 
       ctx.sendData('profileConfigSaved', { success: true });
-      ctx.sendToast('画像配置已保存', 'success');
+      ctx.sendToast(t('config.toast.profileSaved'), 'success');
 
       try {
         await ctx.getOrchestratorEngine().reloadProfiles();
       } catch (reloadError) {
         const reloadMsg = reloadError instanceof Error ? reloadError.message : String(reloadError);
-        ctx.sendToast(`画像重载失败: ${reloadMsg}`, 'warning');
+        ctx.sendToast(t('config.toast.profileReloadFailed', { error: reloadMsg }), 'warning');
       }
 
       await this.sendProfileConfig(ctx);
@@ -172,7 +173,7 @@ export class ConfigCommandHandler implements CommandHandler {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       ctx.sendData('profileConfigSaved', { success: false, error: errorMsg });
-      ctx.sendToast(`保存失败: ${errorMsg}`, 'error');
+      ctx.sendToast(t('config.toast.saveFailed', { error: errorMsg }), 'error');
     }
   }
 
@@ -194,16 +195,16 @@ export class ConfigCommandHandler implements CommandHandler {
         await ctx.getOrchestratorEngine().reloadProfiles();
       } catch (reloadError) {
         const reloadMsg = reloadError instanceof Error ? reloadError.message : String(reloadError);
-        ctx.sendToast(`画像重载失败: ${reloadMsg}`, 'warning');
+        ctx.sendToast(t('config.toast.profileReloadFailed', { error: reloadMsg }), 'warning');
       }
 
-      ctx.sendToast('画像配置已重置为默认值', 'success');
+      ctx.sendToast(t('config.toast.profileResetDone'), 'success');
       ctx.sendData('profileConfigReset', { success: true });
       await this.sendProfileConfig(ctx);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       ctx.sendData('profileConfigReset', { success: false, error: errorMsg });
-      ctx.sendToast(`重置失败: ${errorMsg}`, 'error');
+      ctx.sendToast(t('config.toast.resetFailed', { error: errorMsg }), 'error');
     }
   }
 
@@ -218,7 +219,7 @@ export class ConfigCommandHandler implements CommandHandler {
       ctx.sendData('allWorkerConfigsLoaded', { configs: fullConfig.workers });
     } catch (error: any) {
       logger.error('加载 Worker 配置失败', { error: error.message }, LogCategory.LLM);
-      ctx.sendToast(`加载配置失败: ${error.message}`, 'error');
+      ctx.sendToast(t('config.toast.loadConfigFailed', { error: error.message }), 'error');
     }
   }
 
@@ -232,13 +233,13 @@ export class ConfigCommandHandler implements CommandHandler {
         await ctx.getOrchestratorEngine().reloadProfiles();
       } catch (reloadError) {
         const reloadMsg = reloadError instanceof Error ? reloadError.message : String(reloadError);
-        ctx.sendToast(`Worker 可用列表刷新失败: ${reloadMsg}`, 'warning');
+        ctx.sendToast(t('config.toast.workerRefreshFailed', { error: reloadMsg }), 'warning');
       }
-      ctx.sendToast(`${message.worker} 配置已保存`, 'success');
+      ctx.sendToast(t('config.toast.workerConfigSaved', { worker: message.worker }), 'success');
       logger.info('Worker 配置已保存', { worker: message.worker }, LogCategory.LLM);
     } catch (error: any) {
       logger.error('保存 Worker 配置失败', { worker: message.worker, error: error.message }, LogCategory.LLM);
-      ctx.sendToast(`保存配置失败: ${error.message}`, 'error');
+      ctx.sendToast(t('config.toast.saveConfigFailed', { error: error.message }), 'error');
     }
   }
 
@@ -246,7 +247,7 @@ export class ConfigCommandHandler implements CommandHandler {
     try {
       const normalizedConfig = { ...message.config, enabled: message.config?.enabled !== false };
       if (!normalizedConfig.enabled) {
-        ctx.sendToast(`${message.worker} 未启用，无法测试连接`, 'warning');
+        ctx.sendToast(t('config.toast.workerNotEnabled', { worker: message.worker }), 'warning');
         return;
       }
       const { createLLMClient } = await import('../../llm/clients/client-factory');
@@ -260,14 +261,14 @@ export class ConfigCommandHandler implements CommandHandler {
 
       if (response && response.content) {
         ctx.sendData('workerConnectionTestResult', { worker: message.worker, success: true });
-        ctx.sendToast(`${message.worker} 连接成功`, 'success');
+        ctx.sendToast(t('config.toast.workerConnected', { worker: message.worker }), 'success');
       } else {
         throw new Error('No response from LLM');
       }
     } catch (error: any) {
       logger.error('Worker 连接测试失败', { worker: message.worker, error: error.message }, LogCategory.LLM);
       ctx.sendData('workerConnectionTestResult', { worker: message.worker, success: false, error: error.message });
-      ctx.sendToast(`${message.worker} 连接失败: ${error.message}`, 'error');
+      ctx.sendToast(t('config.toast.workerConnectFailed', { worker: message.worker, error: error.message }), 'error');
     }
   }
 
@@ -278,7 +279,7 @@ export class ConfigCommandHandler implements CommandHandler {
       ctx.sendData('orchestratorConfigLoaded', { config });
     } catch (error: any) {
       logger.error('加载编排者配置失败', { error: error.message }, LogCategory.LLM);
-      ctx.sendToast(`加载配置失败: ${error.message}`, 'error');
+      ctx.sendToast(t('config.toast.loadConfigFailed', { error: error.message }), 'error');
     }
   }
 
@@ -287,11 +288,11 @@ export class ConfigCommandHandler implements CommandHandler {
       const { LLMConfigLoader } = await import('../../llm/config');
       LLMConfigLoader.updateOrchestratorConfig(message.config);
       await ctx.getAdapterFactory().clearAdapter('orchestrator');
-      ctx.sendToast('编排者配置已保存', 'success');
+      ctx.sendToast(t('config.toast.orchestratorSaved'), 'success');
       logger.info('编排者配置已保存', undefined, LogCategory.LLM);
     } catch (error: any) {
       logger.error('保存编排者配置失败', { error: error.message }, LogCategory.LLM);
-      ctx.sendToast(`保存配置失败: ${error.message}`, 'error');
+      ctx.sendToast(t('config.toast.saveConfigFailed', { error: error.message }), 'error');
     }
   }
 
@@ -299,7 +300,7 @@ export class ConfigCommandHandler implements CommandHandler {
     try {
       const normalizedConfig = { ...message.config, enabled: message.config?.enabled !== false };
       if (!normalizedConfig.enabled) {
-        ctx.sendToast('编排者未启用，无法测试连接', 'warning');
+        ctx.sendToast(t('config.toast.orchestratorNotEnabled'), 'warning');
         return;
       }
       const { createLLMClient } = await import('../../llm/clients/client-factory');
@@ -313,14 +314,14 @@ export class ConfigCommandHandler implements CommandHandler {
 
       if (response && response.content) {
         ctx.sendData('orchestratorConnectionTestResult', { success: true });
-        ctx.sendToast('编排模型连接成功', 'success');
+        ctx.sendToast(t('config.toast.orchestratorConnected'), 'success');
       } else {
         throw new Error('No response from LLM');
       }
     } catch (error: any) {
       logger.error('编模型连接测试失败', { error: error.message }, LogCategory.LLM);
       ctx.sendData('orchestratorConnectionTestResult', { success: false, error: error.message });
-      ctx.sendToast(`编排模型连接失败: ${error.message}`, 'error');
+      ctx.sendToast(t('config.toast.orchestratorConnectFailed', { error: error.message }), 'error');
     }
   }
 
@@ -331,7 +332,7 @@ export class ConfigCommandHandler implements CommandHandler {
       ctx.sendData('auxiliaryConfigLoaded', { config });
     } catch (error: any) {
       logger.error('加载辅助模型配置失败', { error: error.message }, LogCategory.LLM);
-      ctx.sendToast(`加载配置失败: ${error.message}`, 'error');
+      ctx.sendToast(t('config.toast.loadConfigFailed', { error: error.message }), 'error');
     }
   }
 
@@ -340,11 +341,11 @@ export class ConfigCommandHandler implements CommandHandler {
       const { LLMConfigLoader } = await import('../../llm/config');
       LLMConfigLoader.updateAuxiliaryConfig(message.config);
       await ctx.getOrchestratorEngine().reloadCompressionAdapter();
-      ctx.sendToast('辅助模型配置已保存', 'success');
+      ctx.sendToast(t('config.toast.auxiliarySaved'), 'success');
       logger.info('辅助模型配置已保存', undefined, LogCategory.LLM);
     } catch (error: any) {
       logger.error('保存辅助模型配置失败', { error: error.message }, LogCategory.LLM);
-      ctx.sendToast(`保存配置失败: ${error.message}`, 'error');
+      ctx.sendToast(t('config.toast.saveConfigFailed', { error: error.message }), 'error');
     }
   }
 
@@ -360,9 +361,9 @@ export class ConfigCommandHandler implements CommandHandler {
 
       if (!normalizedConfig.enabled || !normalizedConfig.apiKey || !normalizedConfig.model) {
         ctx.sendData('auxiliaryConnectionTestResult', {
-          success: false, error: '辅助模型未配置或不可用', fallbackModel,
+          success: false, error: t('config.toast.auxiliaryNotAvailable'), fallbackModel,
         });
-        ctx.sendToast('辅助模型不可用，已降级使用编排者模型', 'warning');
+        ctx.sendToast(t('config.toast.auxiliaryUnavailable'), 'warning');
         return;
       }
       const { createLLMClient } = await import('../../llm/clients/client-factory');
@@ -376,7 +377,7 @@ export class ConfigCommandHandler implements CommandHandler {
 
       if (response && response.content) {
         ctx.sendData('auxiliaryConnectionTestResult', { success: true });
-        ctx.sendToast('辅助模型连接成功', 'success');
+        ctx.sendToast(t('config.toast.auxiliaryConnected'), 'success');
       } else {
         throw new Error('No response from LLM');
       }
@@ -385,7 +386,7 @@ export class ConfigCommandHandler implements CommandHandler {
       ctx.sendData('auxiliaryConnectionTestResult', {
         success: false, error: error.message, fallbackModel,
       });
-      ctx.sendToast('辅助模型连接失败，已降级使用编排者模型', 'warning');
+      ctx.sendToast(t('config.toast.auxiliaryConnectFailed'), 'warning');
     }
   }
 
@@ -393,7 +394,7 @@ export class ConfigCommandHandler implements CommandHandler {
     const { config, target } = message;
     try {
       if (!config?.baseUrl || !config?.apiKey) {
-        ctx.sendData('modelListFetched', { target, success: false, models: [], error: '请先填写 Base URL 和 API Key' });
+        ctx.sendData('modelListFetched', { target, success: false, models: [], error: t('config.toast.fillBaseUrlFirst') });
         return;
       }
 
@@ -418,10 +419,10 @@ export class ConfigCommandHandler implements CommandHandler {
       if (!response.ok) {
         const status = response.status;
         let error = `HTTP ${status}`;
-        if (status === 401 || status === 403) error = 'API Key 无效';
-        else if (status === 404) error = '该 API 不支持模型列表查询';
+        if (status === 401 || status === 403) error = t('config.toast.invalidApiKey');
+        else if (status === 404) error = t('config.toast.apiNotSupportModelList');
         ctx.sendData('modelListFetched', { target, success: false, models: [], error });
-        ctx.sendToast(`获取模型列表失败: ${error}`, 'error');
+        ctx.sendToast(t('config.toast.fetchModelsFailed', { error }), 'error');
         return;
       }
 
@@ -432,17 +433,17 @@ export class ConfigCommandHandler implements CommandHandler {
         .sort();
 
       ctx.sendData('modelListFetched', { target, success: true, models });
-      ctx.sendToast(`获取到 ${models.length} 个模型`, 'success');
+      ctx.sendToast(t('config.toast.modelsFetched', { count: models.length }), 'success');
     } catch (error: any) {
       const errorMessage = toErrorMessage(error);
       let displayError = errorMessage;
       const lower = errorMessage.toLowerCase();
-      if (lower.includes('timeout') || lower.includes('timed out')) displayError = '连接超时';
-      else if (isRetryableNetworkError(errorMessage)) displayError = '网络连接失败';
+      if (lower.includes('timeout') || lower.includes('timed out')) displayError = t('config.toast.connectionTimeout');
+      else if (isRetryableNetworkError(errorMessage)) displayError = t('config.toast.networkFailed');
 
       logger.error('获取模型列表失败', { target, error: errorMessage }, LogCategory.LLM);
       ctx.sendData('modelListFetched', { target, success: false, models: [], error: displayError });
-      ctx.sendToast(`获取模型列表失败: ${displayError}`, 'error');
+      ctx.sendToast(t('config.toast.fetchModelsFailed', { error: displayError }), 'error');
     }
   }
 }

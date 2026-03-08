@@ -10,6 +10,7 @@
 // ✅ 导入并重新导出新的 AgentType 系统
 import type { AgentType, WorkerSlot, AgentRole } from './types/agent-types';
 import type { StandardMessage, StreamUpdate } from './protocol/message-protocol';
+import type { LocaleCode } from './i18n/types';
 export type { AgentType, WorkerSlot, AgentRole };
 
 
@@ -391,6 +392,7 @@ export interface UIState {
   sessions?: import('./session').SessionMeta[];
   currentTask?: Task;
   tasks?: Task[];
+  locale?: LocaleCode;
   activePlan?: { planId: string; formattedPlan: string; updatedAt: number; review?: { status: 'approved' | 'rejected' | 'skipped'; summary: string } };
   planHistory?: Array<{
     planId: string;

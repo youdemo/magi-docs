@@ -26,6 +26,7 @@ import type { CancellationToken } from './dispatch-batch';
 import { LspEnforcer } from '../lsp/lsp-enforcer';
 import { logger, LogCategory } from '../../logging';
 import type { AssembledContext } from '../../context/context-assembler';
+import { t } from '../../i18n';
 
 // ============================================================================
 // 配置与结果类型
@@ -210,7 +211,7 @@ export class WorkerPipeline {
 
           if (!retryHasChanges) {
             if (!result.errors) { result.errors = []; }
-            result.errors.push('未检测到对目标文件的修改');
+            result.errors.push(t('pipeline.errors.noTargetFileChanges'));
             result.success = false;
             targetChangeDetected = false;
             logger.error(
@@ -229,7 +230,10 @@ export class WorkerPipeline {
           if (postResult && postResult.newErrors.length > 0) {
             lspNewErrors.push(...postResult.newErrors);
             if (!result.errors) { result.errors = []; }
-            result.errors.push(`LSP 后检发现 ${postResult.newErrors.length} 个新增编译错误：${postResult.newErrors.join('；')}`);
+            result.errors.push(t('pipeline.errors.lspPostCheckNewErrors', {
+              count: postResult.newErrors.length,
+              errors: postResult.newErrors.join('；'),
+            }));
           }
         } catch (error: any) {
           logger.warn('WorkerPipeline.LSP后检异常', {
@@ -286,7 +290,7 @@ export class WorkerPipeline {
         snapshotManager.createSnapshotForMission(
           filePath, sessionId, missionId, assignment.id,
           'assignment-init', assignment.workerId,
-          `Assignment 执行前快照: ${assignment.responsibility}`,
+          t('pipeline.snapshot.beforeAssignment', { responsibility: assignment.responsibility }),
         );
       }
       logger.info(
@@ -422,13 +426,13 @@ export class WorkerPipeline {
 
   private buildForceChangeGuidance(targetFiles: string[]): string {
     const files = targetFiles.length > 0
-      ? `必须修改以下文件之一并保存：${targetFiles.join(', ')}。`
-      : '必须对目标文件进行实际修改并保存。';
+      ? t('pipeline.forceChange.modifyAnyTarget', { files: targetFiles.join(', ') })
+      : t('pipeline.forceChange.modifyTarget');
     return [
-      '【强制要求】',
-      '你之前没有对目标文件产生实际修改。',
+      t('pipeline.forceChange.title'),
+      t('pipeline.forceChange.noActualModification'),
       files,
-      '禁止仅给出说明或计划，必须通过工具编辑文件并保存后再输出结果。',
+      t('pipeline.forceChange.noPlanOnly'),
     ].join('\n');
   }
 
@@ -441,12 +445,12 @@ export class WorkerPipeline {
       if (result.hasPendingApprovals) {
         contextManager.updateTaskStatus(
           assignment.id, 'in_progress',
-          `等待审批: 完成 ${result.completedTodos.length} 个 Todo`,
+          t('pipeline.context.awaitingApproval', { count: result.completedTodos.length }),
         );
       } else {
         contextManager.updateTaskStatus(
           assignment.id, 'completed',
-          `完成 ${result.completedTodos.length} 个 Todo`,
+          t('pipeline.context.completedTodos', { count: result.completedTodos.length }),
         );
       }
 
@@ -461,13 +465,19 @@ export class WorkerPipeline {
       for (const file of modifiedFiles) {
         contextManager.addCodeChange(
           file, 'modify',
-          `${assignment.workerId} 完成: ${assignment.responsibility}`,
+          t('pipeline.context.workerCompleted', {
+            workerId: assignment.workerId,
+            responsibility: assignment.responsibility,
+          }),
         );
       }
 
       if (result.dynamicTodos.length > 0) {
         contextManager.addImportantContext(
-          `${assignment.workerId} 动态添加了 ${result.dynamicTodos.length} 个 Todo`,
+          t('pipeline.context.dynamicTodosAdded', {
+            workerId: assignment.workerId,
+            count: result.dynamicTodos.length,
+          }),
         );
       }
 
@@ -475,19 +485,31 @@ export class WorkerPipeline {
         const lastTodo = result.completedTodos[result.completedTodos.length - 1];
         if (lastTodo.output?.summary) {
           contextManager.addNextStep(
-            `验证 ${assignment.workerId} 的输出: ${lastTodo.output.summary.substring(0, 50)}...`,
+            t('pipeline.context.verifyWorkerOutput', {
+              workerId: assignment.workerId,
+              summary: `${lastTodo.output.summary.substring(0, 50)}...`,
+            }),
           );
         }
       }
 
-      contextManager.setCurrentWork(`${assignment.workerId} 已完成: ${assignment.responsibility}`);
+      contextManager.setCurrentWork(t('pipeline.context.workerFinished', {
+        workerId: assignment.workerId,
+        responsibility: assignment.responsibility,
+      }));
     } else {
       contextManager.updateTaskStatus(assignment.id, 'failed', result.errors.join('; '));
       if (result.errors.length > 0) {
-        contextManager.addPendingIssue(`${assignment.workerId} 执行失败: ${result.errors[0]}`);
+        contextManager.addPendingIssue(t('pipeline.context.workerFailedIssue', {
+          workerId: assignment.workerId,
+          error: result.errors[0],
+        }));
       }
       contextManager.setCurrentWork(
-        `${assignment.workerId} 执行失败，需要排查: ${result.errors[0]?.substring(0, 50) || '未知错误'}`,
+        t('pipeline.context.workerFailedCurrentWork', {
+          workerId: assignment.workerId,
+          error: result.errors[0]?.substring(0, 50) || t('pipeline.context.unknownError'),
+        }),
       );
     }
 

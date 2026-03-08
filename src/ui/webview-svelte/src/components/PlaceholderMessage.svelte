@@ -4,6 +4,7 @@
   import WorkerBadge from './WorkerBadge.svelte';
   import StreamingIndicator from './StreamingIndicator.svelte';
   import Icon from './Icon.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
   interface Props {
     state: PlaceholderState;
@@ -11,20 +12,20 @@
   let { state }: Props = $props();
 
   // 状态配置（符合 message-response-flow-design.md 规范）
-  const stateConfig: Record<PlaceholderState, { text: string; icon: IconName }> = {
+  const stateConfig = $derived<Record<PlaceholderState, { text: string; icon: IconName }>>({
     pending: {
-      text: '正在准备...',
+      text: i18n.t('placeholderMessage.pending'),
       icon: 'loader',
     },
     received: {
-      text: '已接收...',
+      text: i18n.t('placeholderMessage.received'),
       icon: 'check',
     },
     thinking: {
-      text: '正在思考...',
+      text: i18n.t('placeholderMessage.thinking'),
       icon: 'brain',
     },
-  };
+  });
 
   const config = $derived(stateConfig[state] || stateConfig.pending);
 </script>

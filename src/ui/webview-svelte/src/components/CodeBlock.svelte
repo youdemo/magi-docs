@@ -1,6 +1,7 @@
 <script lang="ts">
   import hljs from 'highlight.js';
   import MermaidRenderer from './MermaidRenderer.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
   // Props
   interface Props {
@@ -134,7 +135,7 @@
         <span class="code-title">
           <span class="lang-name">{langName}</span>
           {#if isMermaid && isStreaming}
-            <span class="streaming-badge">生成中...</span>
+            <span class="streaming-badge">{i18n.t('codeBlock.streaming')}</span>
           {/if}
           {#if filepath}
             <span class="filepath" title={filepath}>{filepath}</span>
@@ -148,12 +149,12 @@
             <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
               <path d="M12.736 3.97a.733.733 0 0 1 1.047 0c.286.289.29.756.01 1.05L7.88 12.01a.733.733 0 0 1-1.065.02L3.217 8.384a.757.757 0 0 1 0-1.06.733.733 0 0 1 1.047 0l3.052 3.093 5.4-6.425z"/>
             </svg>
-            <span>已复制</span>
+            <span>{i18n.t('codeBlock.copied')}</span>
           {:else}
             <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
               <path d="M4 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V2zm2-1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H6zM2 5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-1h1v1a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1v1H2z"/>
             </svg>
-            <span>复制</span>
+            <span>{i18n.t('codeBlock.copy')}</span>
           {/if}
         </button>
       {/if}

@@ -5,6 +5,7 @@
   import Icon from './Icon.svelte';
   import NotificationCenter from './NotificationCenter.svelte';
   import type { Session } from '../types/message';
+  import { i18n } from '../stores/i18n.svelte';
 
   interface Props {
     onOpenSettings?: () => void;
@@ -28,9 +29,9 @@
   // 🔧 修复响应式：直接使用 messagesState 对象属性
   // 获取当前会话名称
   const currentSessionName = $derived.by(() => {
-    if (!messagesState.currentSessionId) return '新会话';
+    if (!messagesState.currentSessionId) return i18n.t('header.defaultSessionName');
     const session = (ensureArray(messagesState.sessions) as Session[]).find(s => s.id === messagesState.currentSessionId);
-    return session?.name || '会话';
+    return session?.name || i18n.t('header.sessionFallbackName');
   });
 
   // 🔧 修复响应式：会话列表
@@ -55,7 +56,7 @@
     }
     // 弹出切换确认对话框
     pendingSwitchSessionId = sessionId;
-    pendingSwitchSessionName = sessionName || '未命名会话';
+    pendingSwitchSessionName = sessionName || i18n.t('header.unnamedSession');
     showSwitchConfirm = true;
   }
 
@@ -92,7 +93,7 @@
   function handleDeleteClick(sessionId: string, sessionName: string, event: MouseEvent) {
     event.stopPropagation();
     pendingDeleteSessionId = sessionId;
-    pendingDeleteSessionName = sessionName || '未命名会话';
+    pendingDeleteSessionName = sessionName || i18n.t('header.unnamedSession');
     showDeleteConfirm = true;
   }
 
@@ -115,7 +116,7 @@
   // 格式化日期
   function formatDate(date: string | number | Date): string {
     const d = new Date(date);
-    return d.toLocaleDateString('zh-CN', {
+    return d.toLocaleDateString(i18n.locale, {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -181,8 +182,8 @@
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div class="session-dropdown">
         <div class="session-dropdown-header">
-          <span class="session-dropdown-title">会话历史</span>
-          <button class="btn-icon btn-icon--sm" onclick={newSession} title={isCurrentSessionEmpty ? '当前会话为空' : '新建会话'} disabled={isCurrentSessionEmpty}>
+          <span class="session-dropdown-title">{i18n.t('header.sessionHistory')}</span>
+          <button class="btn-icon btn-icon--sm" onclick={newSession} title={isCurrentSessionEmpty ? i18n.t('header.currentSessionEmpty') : i18n.t('header.newSession')} disabled={isCurrentSessionEmpty}>
             <Icon name="plus" size={14} />
           </button>
         </div>
@@ -190,7 +191,7 @@
           {#if sessions.length === 0}
             <div class="session-dropdown-empty">
               <Icon name="chat" size={24} />
-              <span>暂无会话历史</span>
+              <span>{i18n.t('header.noSessionHistory')}</span>
             </div>
           {:else}
             {#each sessions as session (session.id)}
@@ -203,16 +204,16 @@
                 onkeydown={(e) => e.key === 'Enter' && handleSessionClick(session.id, session.name || '')}
               >
                 <div class="session-info">
-                  <span class="session-name">{session.name || '未命名会话'}</span>
+                  <span class="session-name">{session.name || i18n.t('header.unnamedSession')}</span>
                   <div class="session-meta">
-                    <span class="session-count">{session.messageCount ?? 0} 条消息</span>
+                    <span class="session-count">{i18n.t('header.messageCount', { count: session.messageCount ?? 0 })}</span>
                     <span class="session-date">{formatDate(session.updatedAt || session.createdAt)}</span>
                   </div>
                 </div>
                 <button
                   class="delete-btn"
                   onclick={(e) => handleDeleteClick(session.id, session.name || '', e)}
-                  title="删除会话"
+                  title={i18n.t('header.deleteSession')}
                 >
                   <Icon name="delete" size={14} />
                 </button>
@@ -226,11 +227,11 @@
 
   <!-- 右侧操作按钮 -->
   <div class="header-actions">
-    <button class="btn-icon btn-icon--sm" onclick={newSession} title={isCurrentSessionEmpty ? '当前会话为空' : '新建会话'} disabled={isCurrentSessionEmpty}>
+    <button class="btn-icon btn-icon--sm" onclick={newSession} title={isCurrentSessionEmpty ? i18n.t('header.currentSessionEmpty') : i18n.t('header.newSession')} disabled={isCurrentSessionEmpty}>
       <Icon name="plus" size={14} />
     </button>
     <NotificationCenter />
-    <button class="btn-icon btn-icon--sm" onclick={openSettings} title="设置">
+    <button class="btn-icon btn-icon--sm" onclick={openSettings} title={i18n.t('header.settings')}>
       <Icon name="settings" size={14} />
     </button>
   </div>
@@ -243,15 +244,15 @@
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="modal-dialog modal-dialog--sm" role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
-        <h3 class="modal-title">删除会话</h3>
+        <h3 class="modal-title">{i18n.t('header.deleteSessionTitle')}</h3>
         <button class="modal-close" onclick={closeDeleteConfirm}>×</button>
       </div>
       <div class="modal-body">
-        <p>确定要删除会话 "<strong>{pendingDeleteSessionName}</strong>" 吗？此操作不可撤销。</p>
+        <p>{i18n.t('header.deleteSessionConfirm', { name: pendingDeleteSessionName })}</p>
       </div>
       <div class="modal-footer">
-        <button class="modal-btn secondary" onclick={closeDeleteConfirm}>取消</button>
-        <button class="modal-btn danger" onclick={confirmDelete}>确定删除</button>
+        <button class="modal-btn secondary" onclick={closeDeleteConfirm}>{i18n.t('header.cancel')}</button>
+        <button class="modal-btn danger" onclick={confirmDelete}>{i18n.t('header.confirmDelete')}</button>
       </div>
     </div>
   </div>
@@ -264,15 +265,15 @@
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="modal-dialog modal-dialog--sm" role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
-        <h3 class="modal-title">切换会话</h3>
+        <h3 class="modal-title">{i18n.t('header.switchSessionTitle')}</h3>
         <button class="modal-close" onclick={closeSwitchConfirm}>×</button>
       </div>
       <div class="modal-body">
-        <p>确定要切换到会话 "<strong>{pendingSwitchSessionName}</strong>" 吗？</p>
+        <p>{i18n.t('header.switchSessionConfirm', { name: pendingSwitchSessionName })}</p>
       </div>
       <div class="modal-footer">
-        <button class="modal-btn secondary" onclick={closeSwitchConfirm}>取消</button>
-        <button class="modal-btn primary" onclick={confirmSwitch}>确定切换</button>
+        <button class="modal-btn secondary" onclick={closeSwitchConfirm}>{i18n.t('header.cancel')}</button>
+        <button class="modal-btn primary" onclick={confirmSwitch}>{i18n.t('header.confirmSwitch')}</button>
       </div>
     </div>
   </div>

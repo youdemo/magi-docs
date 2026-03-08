@@ -3,6 +3,7 @@
   import { ensureArray } from '../lib/utils';
   import type { Toast } from '../types/message';
   import Icon from './Icon.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
   const appState = getState();
 
@@ -72,7 +73,7 @@
         {/if}
         <div class="toast-message">{toast.message}</div>
       </div>
-      <button class="toast-close" onclick={() => removeToast(toast.id)} title="关闭通知">
+      <button class="toast-close" onclick={() => removeToast(toast.id)} title={i18n.t('toastContainer.closeNotification')}>
         <Icon name="close" size={12} />
       </button>
     </div>

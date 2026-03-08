@@ -16,52 +16,52 @@ export class PromptBuilder {
 
     // 核心能力（从 assignedCategories 推导，由 ProfileLoader 填充到 persona.strengths）
     if (persona.strengths.length > 0) {
-      sections.push(`## 核心能力\n${persona.strengths.map(s => `- ${s}`).join('\n')}`);
+      sections.push(`## Core Competencies\n${persona.strengths.map(s => `- ${s}`).join('\n')}`);
     }
 
     if (context.category) {
       const categoryDef = CATEGORY_DEFINITIONS[context.category];
       if (!categoryDef) {
-        throw new Error(`未知分类: ${context.category}`);
+        throw new Error(`Unknown category: ${context.category}`);
       }
 
-      sections.push(`## 任务类型\n${categoryDef.displayName}`);
+      sections.push(`## Task Category\n${categoryDef.displayName}`);
 
       if (categoryDef.guidance.focus.length > 0) {
-        sections.push(`## 专注领域\n${categoryDef.guidance.focus.map(f => `- ${f}`).join('\n')}`);
+        sections.push(`## Focus Areas\n${categoryDef.guidance.focus.map(f => `- ${f}`).join('\n')}`);
       }
 
       if (categoryDef.guidance.constraints.length > 0) {
-        sections.push(`## 行为约束\n${categoryDef.guidance.constraints.map(c => `- ${c}`).join('\n')}`);
+        sections.push(`## Behavioral Constraints\n${categoryDef.guidance.constraints.map(c => `- ${c}`).join('\n')}`);
       }
     }
 
     if (context.collaborators && context.collaborators.length > 0) {
-      sections.push(`## 协作规则\n${this.buildCollaborationSection(persona, context)}`);
+      sections.push(`## Collaboration Rules\n${this.buildCollaborationSection(persona, context)}`);
     }
 
     const reasoningGuidelines = persona.reasoningGuidelines ?? [];
     if (reasoningGuidelines.length > 0) {
-      sections.push(`## 推理过程\n${reasoningGuidelines.map(r => `- ${r}`).join('\n')}`);
+      sections.push(`## Reasoning Process\n${reasoningGuidelines.map(r => `- ${r}`).join('\n')}`);
     }
 
     const outputPreferences = persona.outputPreferences ?? [];
     if (outputPreferences.length > 0) {
-      sections.push(`## 输出要求\n${outputPreferences.map(p => `- ${p}`).join('\n')}`);
+      sections.push(`## Output Requirements\n${outputPreferences.map(p => `- ${p}`).join('\n')}`);
     }
 
     sections.push(this.buildToolUsageSection(context.availableToolsSummary));
 
     // 语言规则：跟随用户输入语言，用户规则中若有明确要求则以用户规则为准
-    sections.push(`## 语言规则
-- 使用与任务指令相同的语言进行输出
-- 禁止输出内部推理过程（如 "Let me..."、"I need to..."），直接执行行动`);
+    sections.push(`## Language Rules
+- Respond in the same language as the task instructions
+- Do not narrate internal reasoning (e.g., "Let me...", "I need to...") — take action directly`);
 
     return sections.join('\n\n');
   }
 
   buildRoleSection(persona: WorkerPersona): string {
-    return `## 角色定位\n${persona.baseRole.trim()}`;
+    return `## Role\n${persona.baseRole.trim()}`;
   }
 
   private buildCollaborationSection(persona: WorkerPersona, context: InjectionContext): string {
@@ -73,7 +73,7 @@ export class PromptBuilder {
     if (rules.length === 0) {
       return '';
     }
-    const roleType = isLeader ? '主导者' : '协作者';
+    const roleType = isLeader ? 'Leader' : 'Collaborator';
     return `### ${roleType}\n${rules.map(r => `- ${r}`).join('\n')}`;
   }
 
@@ -86,30 +86,30 @@ export class PromptBuilder {
   private buildToolUsageSection(toolsSummary?: string): string {
     const sections: string[] = [];
 
-    sections.push('## 工具使用规范');
+    sections.push('## Tool Usage Guidelines');
 
     // 动态工具列表（内置 + MCP + Skill）
     if (toolsSummary?.trim()) {
-      sections.push(`### 可用工具\n${toolsSummary}`);
+      sections.push(`### Available Tools\n${toolsSummary}`);
     }
 
     // 工具使用策略（与具体工具名解耦）
-    sections.push(`### 工作流
-1. **定位**（1-2 轮）：通过语义搜索或文本匹配找到目标代码
-2. **查看**（1 轮）：读取目标文件，确认要修改的内容
-3. **修改**（N 轮）：使用精确替换逐处修改
-4. **完成**：输出简要修改摘要（改了哪些文件、做了什么改动）
+    sections.push(`### Workflow
+1. **Locate** (1-2 rounds): Find the target code via semantic search or text matching
+2. **Inspect** (1 round): Read the target file and confirm what needs to be changed
+3. **Modify** (N rounds): Apply precise replacements for each change
+4. **Complete**: Output a brief summary of modifications (which files were changed and what was done)
 
-### 搜索效率
-- 同一内容只搜索一次，不要换措辞重复搜索——系统会拦截重复查询
-- 搜索未找到预期内容时，直接报告"未找到"并继续，不要重试
-- 每个文件只读取一次，已读过的内容直接使用
+### Search Efficiency
+- Search for any given content only once — do not rephrase and re-search; the system will intercept duplicate queries
+- If a search returns no expected results, report "not found" and move on — do not retry
+- Read each file only once; reuse content you have already read
 
-### 禁止行为
-- 禁止用终端命令执行文件读取、目录浏览、内容搜索等操作——使用对应的专用工具
-- 禁止输出未经工具执行的代码块（所有修改通过文件编辑工具完成）
-- 禁止在每轮工具调用前做冗长的"接下来我将..."规划描述
-- 若本轮将调用工具：不要输出自然语言过渡句，直接发起工具调用；自然语言说明仅在无工具轮输出`);
+### Prohibited Actions
+- Do not use terminal commands for file reading, directory browsing, or content searching — use the dedicated tools instead
+- Do not output code blocks that were not executed through tools (all modifications must go through file-editing tools)
+- Do not precede each tool call with lengthy "Next I will..." planning narratives
+- When calling a tool in the current turn: issue the tool call directly without natural-language transition sentences; natural-language explanations are only for turns with no tool calls`);
 
     return sections.join('\n\n');
   }

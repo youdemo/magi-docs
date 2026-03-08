@@ -4,6 +4,7 @@
   import Icon from './Icon.svelte';
   import { onMount, tick } from 'svelte';
   import { clearMessageJump, messagesState } from '../stores/messages.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
   // Props - Svelte 5 语法
   interface Props {
@@ -232,8 +233,8 @@
 
   // 空状态默认值
   const emptyIcon = $derived((emptyState?.icon || 'chat') as import('../lib/icons').IconName);
-  const emptyTitle = $derived(emptyState?.title || '开始一个新对话');
-  const emptyHint = $derived(emptyState?.hint || '在下方输入框中输入你的问题');
+  const emptyTitle = $derived(emptyState?.title || i18n.t('messageList.empty.title'));
+  const emptyHint = $derived(emptyState?.hint || i18n.t('messageList.empty.hint'));
 
   // 容器引用
   let containerRef: HTMLDivElement | null = $state(null);
@@ -378,7 +379,7 @@
 
   <!-- 滚动按钮：绝对定位在消息列表右下角 -->
   {#if showScrollBtn}
-    <button class="scroll-to-bottom" onclick={scrollToBottom} title="回到底部">
+    <button class="scroll-to-bottom" onclick={scrollToBottom} title={i18n.t('messageList.scrollToBottom')}>
       <Icon name="chevron-down" size={16} />
     </button>
   {/if}

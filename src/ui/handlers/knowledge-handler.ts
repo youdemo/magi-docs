@@ -11,6 +11,7 @@ import * as vscode from 'vscode';
 import { logger, LogCategory } from '../../logging';
 import type { WebviewToExtensionMessage } from '../../types';
 import type { CommandHandler, CommandHandlerContext } from './types';
+import { t } from '../../i18n';
 
 type Msg<T extends string> = Extract<WebviewToExtensionMessage, { type: T }>;
 
@@ -69,7 +70,7 @@ export class KnowledgeCommandHandler implements CommandHandler {
     try {
       const kb = ctx.getProjectKnowledgeBase();
       if (!kb) {
-        ctx.sendToast('项目知识库未初始化', 'warning');
+        ctx.sendToast(t('knowledge.toast.notInitialized'), 'warning');
         return;
       }
 
@@ -87,7 +88,7 @@ export class KnowledgeCommandHandler implements CommandHandler {
       }, LogCategory.SESSION);
     } catch (error: any) {
       logger.error('项目知识.加载失败', { error: error.message }, LogCategory.SESSION);
-      ctx.sendToast(`加载项目知识失败: ${error.message}`, 'error');
+      ctx.sendToast(t('knowledge.toast.loadFailed', { error: error.message }), 'error');
     }
   }
 
@@ -95,175 +96,175 @@ export class KnowledgeCommandHandler implements CommandHandler {
     try {
       const kb = ctx.getProjectKnowledgeBase();
       if (!kb) {
-        ctx.sendToast('项目知识库未初始化', 'warning');
+        ctx.sendToast(t('knowledge.toast.notInitialized'), 'warning');
         return;
       }
 
       const counts = kb.clearAll();
       const total = counts.adrs + counts.faqs + counts.learnings;
-      ctx.sendToast(`已清空 ${total} 条知识记录（ADR: ${counts.adrs}, FAQ: ${counts.faqs}, 经验: ${counts.learnings}）`, 'success');
+      ctx.sendToast(t('knowledge.toast.cleared', { total, adrs: counts.adrs, faqs: counts.faqs, learnings: counts.learnings }), 'success');
       logger.info('项目知识库.已清空', counts, LogCategory.SESSION);
       await this.handleGetProjectKnowledge(ctx);
     } catch (error: any) {
       logger.error('项目知识库.清空失败', { error: error.message }, LogCategory.SESSION);
-      ctx.sendToast(`清空失败: ${error.message}`, 'error');
+      ctx.sendToast(t('knowledge.toast.clearFailed', { error: error.message }), 'error');
     }
   }
 
   private async handleGetADRs(message: Msg<'getADRs'>, ctx: CommandHandlerContext): Promise<void> {
     try {
       const kb = ctx.getProjectKnowledgeBase();
-      if (!kb) { ctx.sendToast('项目知识库未初始化', 'warning'); return; }
+      if (!kb) { ctx.sendToast(t('knowledge.toast.notInitialized'), 'warning'); return; }
       const adrs = kb.getADRs(message.filter as any);
       logger.info('ADR.已加载', { count: adrs.length, filter: message.filter }, LogCategory.SESSION);
       await this.handleGetProjectKnowledge(ctx);
     } catch (error: any) {
       logger.error('ADR.加载失败', { error: error.message }, LogCategory.SESSION);
-      ctx.sendToast(`加载 ADR 失败: ${error.message}`, 'error');
+      ctx.sendToast(t('knowledge.toast.loadAdrFailed', { error: error.message }), 'error');
     }
   }
 
   private async handleGetFAQs(message: Msg<'getFAQs'>, ctx: CommandHandlerContext): Promise<void> {
     try {
       const kb = ctx.getProjectKnowledgeBase();
-      if (!kb) { ctx.sendToast('项目知识库未初始化', 'warning'); return; }
+      if (!kb) { ctx.sendToast(t('knowledge.toast.notInitialized'), 'warning'); return; }
       const faqs = kb.getFAQs(message.filter);
       logger.info('FAQ.已加载', { count: faqs.length, filter: message.filter }, LogCategory.SESSION);
       await this.handleGetProjectKnowledge(ctx);
     } catch (error: any) {
       logger.error('FAQ.加载失败', { error: error.message }, LogCategory.SESSION);
-      ctx.sendToast(`加载 FAQ 失败: ${error.message}`, 'error');
+      ctx.sendToast(t('knowledge.toast.loadFaqFailed', { error: error.message }), 'error');
     }
   }
 
   private async handleSearchFAQs(message: Msg<'searchFAQs'>, ctx: CommandHandlerContext): Promise<void> {
     try {
       const kb = ctx.getProjectKnowledgeBase();
-      if (!kb) { ctx.sendToast('项目知识库未初始化', 'warning'); return; }
+      if (!kb) { ctx.sendToast(t('knowledge.toast.notInitialized'), 'warning'); return; }
       const results = kb.searchFAQs(message.keyword);
       logger.info('FAQ.搜索完成', { keyword: message.keyword, count: results.length }, LogCategory.SESSION);
       await this.handleGetProjectKnowledge(ctx);
     } catch (error: any) {
       logger.error('FAQ.搜索失败', { error: error.message }, LogCategory.SESSION);
-      ctx.sendToast(`搜索 FAQ 失败: ${error.message}`, 'error');
+      ctx.sendToast(t('knowledge.toast.searchFaqFailed', { error: error.message }), 'error');
     }
   }
 
   private async handleDeleteADR(message: Msg<'deleteADR'>, ctx: CommandHandlerContext): Promise<void> {
     try {
       const kb = ctx.getProjectKnowledgeBase();
-      if (!kb) { ctx.sendToast('项目知识库未初始化', 'warning'); return; }
+      if (!kb) { ctx.sendToast(t('knowledge.toast.notInitialized'), 'warning'); return; }
       const success = kb.deleteADR(message.id);
       if (success) {
-        ctx.sendToast('ADR 已删除', 'success');
+        ctx.sendToast(t('knowledge.toast.adrDeleted'), 'success');
         logger.info('ADR.删除成功', { id: message.id }, LogCategory.SESSION);
         await this.handleGetProjectKnowledge(ctx);
       } else {
-        ctx.sendToast('ADR 删除失败', 'error');
+        ctx.sendToast(t('knowledge.toast.adrDeleteFailed'), 'error');
       }
     } catch (error: any) {
       logger.error('ADR.删除失败', { error: error.message }, LogCategory.SESSION);
-      ctx.sendToast(`删除失败: ${error.message}`, 'error');
+      ctx.sendToast(t('knowledge.toast.deleteFailed', { error: error.message }), 'error');
     }
   }
 
   private async handleDeleteFAQ(message: Msg<'deleteFAQ'>, ctx: CommandHandlerContext): Promise<void> {
     try {
       const kb = ctx.getProjectKnowledgeBase();
-      if (!kb) { ctx.sendToast('项目知识库未初始化', 'warning'); return; }
+      if (!kb) { ctx.sendToast(t('knowledge.toast.notInitialized'), 'warning'); return; }
       const success = kb.deleteFAQ(message.id);
       if (success) {
-        ctx.sendToast('FAQ 已删除', 'success');
+        ctx.sendToast(t('knowledge.toast.faqDeleted'), 'success');
         logger.info('FAQ.删除成功', { id: message.id }, LogCategory.SESSION);
         await this.handleGetProjectKnowledge(ctx);
       } else {
-        ctx.sendToast('FAQ 删除失败', 'error');
+        ctx.sendToast(t('knowledge.toast.faqDeleteFailed'), 'error');
       }
     } catch (error: any) {
       logger.error('FAQ.删除失败', { error: error.message }, LogCategory.SESSION);
-      ctx.sendToast(`删除失败: ${error.message}`, 'error');
+      ctx.sendToast(t('knowledge.toast.deleteFailed', { error: error.message }), 'error');
     }
   }
 
   private async handleDeleteLearning(message: Msg<'deleteLearning'>, ctx: CommandHandlerContext): Promise<void> {
     try {
       const kb = ctx.getProjectKnowledgeBase();
-      if (!kb) { ctx.sendToast('项目知识库未初始化', 'warning'); return; }
+      if (!kb) { ctx.sendToast(t('knowledge.toast.notInitialized'), 'warning'); return; }
       const success = kb.deleteLearning(message.id);
       if (success) {
-        ctx.sendToast('经验记录已删除', 'success');
+        ctx.sendToast(t('knowledge.toast.learningDeleted'), 'success');
         logger.info('Learning.删除成功', { id: message.id }, LogCategory.SESSION);
         await this.handleGetProjectKnowledge(ctx);
       } else {
-        ctx.sendToast('经验记录删除失败', 'error');
+        ctx.sendToast(t('knowledge.toast.learningDeleteFailed'), 'error');
       }
     } catch (error: any) {
       logger.error('Learning.删除失败', { error: error.message }, LogCategory.SESSION);
-      ctx.sendToast(`删除失败: ${error.message}`, 'error');
+      ctx.sendToast(t('knowledge.toast.deleteFailed', { error: error.message }), 'error');
     }
   }
 
   private async handleAddADR(message: Msg<'addADR'>, ctx: CommandHandlerContext): Promise<void> {
     try {
       const kb = ctx.getProjectKnowledgeBase();
-      if (!kb) { ctx.sendToast('项目知识库未初始化', 'warning'); return; }
+      if (!kb) { ctx.sendToast(t('knowledge.toast.notInitialized'), 'warning'); return; }
       kb.addADR(message.adr);
-      ctx.sendToast('ADR 已添加', 'success');
+      ctx.sendToast(t('knowledge.toast.adrAdded'), 'success');
       logger.info('ADR.已添加', { id: message.adr.id, title: message.adr.title }, LogCategory.SESSION);
       await this.handleGetProjectKnowledge(ctx);
     } catch (error: any) {
       logger.error('ADR.添加失败', { error: error.message }, LogCategory.SESSION);
-      ctx.sendToast(`添加 ADR 失败: ${error.message}`, 'error');
+      ctx.sendToast(t('knowledge.toast.addAdrFailed', { error: error.message }), 'error');
     }
   }
 
   private async handleUpdateADR(message: Msg<'updateADR'>, ctx: CommandHandlerContext): Promise<void> {
     try {
       const kb = ctx.getProjectKnowledgeBase();
-      if (!kb) { ctx.sendToast('项目知识库未初始化', 'warning'); return; }
+      if (!kb) { ctx.sendToast(t('knowledge.toast.notInitialized'), 'warning'); return; }
       const success = kb.updateADR(message.id, message.updates);
       if (success) {
-        ctx.sendToast('ADR 已更新', 'success');
+        ctx.sendToast(t('knowledge.toast.adrUpdated'), 'success');
         logger.info('ADR.已更新', { id: message.id }, LogCategory.SESSION);
         await this.handleGetProjectKnowledge(ctx);
       } else {
-        ctx.sendToast('ADR 不存在', 'warning');
+        ctx.sendToast(t('knowledge.toast.adrNotExist'), 'warning');
       }
     } catch (error: any) {
       logger.error('ADR.更新失败', { error: error.message }, LogCategory.SESSION);
-      ctx.sendToast(`更新 ADR 失败: ${error.message}`, 'error');
+      ctx.sendToast(t('knowledge.toast.updateAdrFailed', { error: error.message }), 'error');
     }
   }
 
   private async handleAddFAQ(message: Msg<'addFAQ'>, ctx: CommandHandlerContext): Promise<void> {
     try {
       const kb = ctx.getProjectKnowledgeBase();
-      if (!kb) { ctx.sendToast('项目知识库未初始化', 'warning'); return; }
+      if (!kb) { ctx.sendToast(t('knowledge.toast.notInitialized'), 'warning'); return; }
       kb.addFAQ(message.faq);
-      ctx.sendToast('FAQ 已添加', 'success');
+      ctx.sendToast(t('knowledge.toast.faqAdded'), 'success');
       logger.info('FAQ.已添加', { id: message.faq.id, question: message.faq.question }, LogCategory.SESSION);
       await this.handleGetProjectKnowledge(ctx);
     } catch (error: any) {
       logger.error('FAQ.添加失败', { error: error.message }, LogCategory.SESSION);
-      ctx.sendToast(`添加 FAQ 失败: ${error.message}`, 'error');
+      ctx.sendToast(t('knowledge.toast.addFaqFailed', { error: error.message }), 'error');
     }
   }
 
   private async handleUpdateFAQ(message: Msg<'updateFAQ'>, ctx: CommandHandlerContext): Promise<void> {
     try {
       const kb = ctx.getProjectKnowledgeBase();
-      if (!kb) { ctx.sendToast('项目知识库未初始化', 'warning'); return; }
+      if (!kb) { ctx.sendToast(t('knowledge.toast.notInitialized'), 'warning'); return; }
       const success = kb.updateFAQ(message.id, message.updates);
       if (success) {
-        ctx.sendToast('FAQ 已更新', 'success');
+        ctx.sendToast(t('knowledge.toast.faqUpdated'), 'success');
         logger.info('FAQ.已更新', { id: message.id }, LogCategory.SESSION);
         await this.handleGetProjectKnowledge(ctx);
       } else {
-        ctx.sendToast('FAQ 不存在', 'warning');
+        ctx.sendToast(t('knowledge.toast.faqNotExist'), 'warning');
       }
     } catch (error: any) {
       logger.error('FAQ.更新失败', { error: error.message }, LogCategory.SESSION);
-      ctx.sendToast(`更新 FAQ 失败: ${error.message}`, 'error');
+      ctx.sendToast(t('knowledge.toast.updateFaqFailed', { error: error.message }), 'error');
     }
   }
 }

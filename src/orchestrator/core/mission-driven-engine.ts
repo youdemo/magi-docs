@@ -10,6 +10,7 @@
 import { EventEmitter } from 'events';
 import path from 'path';
 import { IAdapterFactory } from '../../adapters/adapter-factory-interface';
+import { t } from '../../i18n';
 import { UnifiedSessionManager } from '../../session/unified-session-manager';
 import { SnapshotManager } from '../../snapshot-manager';
 import { ContextManager } from '../../context/context-manager';
@@ -569,7 +570,7 @@ export class MissionDrivenEngine extends EventEmitter {
   private enqueueExecution<T>(runner: () => Promise<T>): Promise<T> {
     const queueDepth = this.pendingCount++;
     if (queueDepth > 0) {
-      this.messageHub.notify(`当前有 ${queueDepth} 个任务排队中，请稍候...`);
+      this.messageHub.notify(t('engine.queue.waiting', { queueDepth }));
     }
     const next = this.executionQueue.then(runner, runner);
     this.executionQueue = next.then(
@@ -712,7 +713,7 @@ export class MissionDrivenEngine extends EventEmitter {
     return this.enqueueExecution(async () => {
       const trimmedPrompt = userPrompt?.trim() || '';
       if (!trimmedPrompt) {
-        return '请输入你的需求或问题。';
+        return t('engine.input.emptyPrompt');
       }
 
       this.isRunning = true;
@@ -755,13 +756,14 @@ export class MissionDrivenEngine extends EventEmitter {
         if (this.interactionMode === 'ask') {
           const confirmed = await this.awaitPlanConfirmation(resolvedSessionId, draftPlan, fallbackFormattedPlan);
           if (!confirmed) {
-            await this.planLedger.reject(resolvedSessionId, draftPlan.planId, 'user', '用户取消执行计划');
+            const rejectReason = t('engine.plan.userCancelledReason');
+            await this.planLedger.reject(resolvedSessionId, draftPlan.planId, 'user', rejectReason);
             this.lastExecutionSuccess = false;
-            this.lastExecutionErrors = ['用户取消执行计划'];
+            this.lastExecutionErrors = [rejectReason];
             planFinalStatus = 'cancelled';
             this.setState('idle');
             this.currentTaskId = null;
-            return '已取消执行计划。';
+            return t('engine.plan.userCancelledResult');
           }
           await this.planLedger.approve(resolvedSessionId, draftPlan.planId, 'user');
           this.setState('running');
@@ -814,14 +816,21 @@ export class MissionDrivenEngine extends EventEmitter {
             // 获取所有相关的 Todo，包括已完成的，以告知编排者真实进度
             const allTodos = await todoManager.query({ sessionId: resolvedSessionId });
             if (allTodos.length > 0) {
-              const fullSummary = allTodos.map(t => {
-                const isDone = t.status === 'completed';
-                const statusFlag = isDone ? 'COMPLETED (代码已被真实修改，请勿重复执行)' : t.status.toUpperCase();
-                return `- [${statusFlag}] ID: ${t.id} | Worker: ${t.workerId || 'unassigned'} | 任务: ${t.content}`;
+              const fullSummary = allTodos.map(todo => {
+                const isDone = todo.status === 'completed';
+                const statusFlag = isDone
+                  ? t('engine.todos.completedGuard')
+                  : todo.status.toUpperCase();
+                return t('engine.todos.itemLine', {
+                  status: statusFlag,
+                  id: todo.id,
+                  worker: todo.workerId || 'unassigned',
+                  content: todo.content,
+                });
               }).join('\n');
               // Token 截断机制：限制最大长度约 1000 字符，防止上下文超载
               activeTodosSummary = fullSummary.length > 1000
-                ? fullSummary.substring(0, 1000) + '\n... (部分任务已截断)'
+                ? `${fullSummary.substring(0, 1000)}\n${t('engine.todos.truncated')}`
                 : fullSummary;
             }
           }
@@ -890,7 +899,7 @@ export class MissionDrivenEngine extends EventEmitter {
 
         const auditOutcome = currentBatch?.getAuditOutcome();
         if (auditOutcome?.level === 'intervention') {
-          throw new Error('Phase C 审计发现需干预项，自动交付已阻断，请按审计建议追加修复任务后重试');
+          throw new Error(t('engine.phaseC.interventionBlocked'));
         }
 
         if (response.error) {
@@ -1039,11 +1048,11 @@ export class MissionDrivenEngine extends EventEmitter {
 
       const sessionId = this.currentSessionId || this.sessionManager.getCurrentSession()?.id || '';
       if (!sessionId) {
-        throw new Error('缺少会话 ID');
+        throw new Error(t('engine.errors.missingSessionId'));
       }
       const prompt = this.activeUserPrompt?.trim() || '';
       if (!prompt) {
-        throw new Error('缺少用户请求');
+        throw new Error(t('engine.errors.missingUserPrompt'));
       }
 
       const mission = await this.missionStorage.createMission({
@@ -1059,7 +1068,7 @@ export class MissionDrivenEngine extends EventEmitter {
         } catch {
           // 回收失败不阻塞主流程，后续由任务清理流程处理
         }
-        throw new Error('执行轮次已切换，Mission 创建结果失效');
+        throw new Error(t('engine.errors.turnSwitchedMissionInvalid'));
       }
 
       mission.status = 'executing';
@@ -1308,7 +1317,7 @@ export class MissionDrivenEngine extends EventEmitter {
         .filter(e => e.status === 'running')
         .map(e => e.worker);
 
-      activeBatch.cancelAll('用户取消');
+      activeBatch.cancelAll(t('engine.cancel.userCancelled'));
 
       // 中断所有正在执行的 Worker LLM 请求
       for (const worker of runningWorkers) {
@@ -1335,7 +1344,7 @@ export class MissionDrivenEngine extends EventEmitter {
    */
   getStatsSummary(): string {
     const { inputTokens, outputTokens } = this.orchestratorTokens;
-    return `编排器 Token 使用: 输入 ${inputTokens}, 输出 ${outputTokens}`;
+    return t('engine.stats.summary', { inputTokens, outputTokens });
   }
 
   /**
@@ -1403,10 +1412,10 @@ export class MissionDrivenEngine extends EventEmitter {
   async startTaskById(taskId: string): Promise<void> {
     const mission = await this.missionStorage.load(taskId);
     if (!mission) {
-      throw new Error(`任务不存在: ${taskId}`);
+      throw new Error(t('engine.errors.taskNotFound', { taskId }));
     }
     if (!mission.userPrompt?.trim()) {
-      throw new Error(`任务缺少执行内容: ${taskId}`);
+      throw new Error(t('engine.errors.taskMissingPrompt', { taskId }));
     }
     const { userPrompt, sessionId } = mission;
     // 触发统一执行链路（执行成功后再迁移原 draft 状态，避免先删后跑导致任务丢失）

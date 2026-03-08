@@ -220,19 +220,19 @@ export class AutonomousWorker extends EventEmitter {
 
     // 运行时验证：强制依赖参数（TypeScript 类型在运行时不存在）
     if (!todoManager) {
-      throw new Error(`创建 Worker[${workerType}] 失败: todoManager 为必需依赖`);
+      throw new Error(`Failed to create Worker[${workerType}]: todoManager is a required dependency`);
     }
     if (!sharedContextDeps) {
-      throw new Error(`创建 Worker[${workerType}] 失败: sharedContextDeps 为必需依赖`);
+      throw new Error(`Failed to create Worker[${workerType}]: sharedContextDeps is a required dependency`);
     }
     if (!sharedContextDeps.contextAssembler) {
-      throw new Error(`创建 Worker[${workerType}] 失败: 缺少 contextAssembler`);
+      throw new Error(`Failed to create Worker[${workerType}]: missing contextAssembler`);
     }
     if (!sharedContextDeps.fileSummaryCache) {
-      throw new Error(`创建 Worker[${workerType}] 失败: 缺少 fileSummaryCache`);
+      throw new Error(`Failed to create Worker[${workerType}]: missing fileSummaryCache`);
     }
     if (!sharedContextDeps.sharedContextPool) {
-      throw new Error(`创建 Worker[${workerType}] 失败: 缺少 sharedContextPool`);
+      throw new Error(`Failed to create Worker[${workerType}]: missing sharedContextPool`);
     }
 
     this.todoManager = todoManager;
@@ -344,7 +344,7 @@ export class AutonomousWorker extends EventEmitter {
         const resumeInstruction = options.resumePrompt || session.resumePrompt;
         if (resumeInstruction) {
           this.appendSupplementaryInstructions(assignment, [
-            `继续执行被中断任务时，请继承并落实以下恢复指令：${resumeInstruction}`,
+            `When resuming the interrupted task, inherit and follow these recovery instructions: ${resumeInstruction}`,
           ]);
         }
 
@@ -410,7 +410,7 @@ export class AutonomousWorker extends EventEmitter {
       // 取消信号检查（每次迭代入口）
       if (options.cancellationToken?.isCancelled) {
         aborted = true;
-        abortReason = options.cancellationToken.reason || '任务被取消';
+        abortReason = options.cancellationToken.reason || 'Task cancelled';
         logger.info('Worker.Assignment.取消信号', { assignmentId: assignment.id, reason: abortReason }, LogCategory.ORCHESTRATOR);
         break;
       }
@@ -460,7 +460,7 @@ export class AutonomousWorker extends EventEmitter {
               // 处理编排者响应
               if (orchestratorResponse.action === 'abort') {
                 aborted = true;
-                abortReason = orchestratorResponse.abortReason || '编排者终止执行';
+                abortReason = orchestratorResponse.abortReason || 'Aborted by orchestrator';
                 logger.info('Worker.Assignment.被编排者终止', { assignmentId: assignment.id, reason: abortReason }, LogCategory.ORCHESTRATOR);
                 break;
               } else if (orchestratorResponse.action === 'adjust' && orchestratorResponse.adjustment) {
@@ -511,7 +511,7 @@ export class AutonomousWorker extends EventEmitter {
                 );
                 if (orchestratorResponse.action === 'abort') {
                   aborted = true;
-                  abortReason = orchestratorResponse.abortReason || '编排者终止执行';
+                  abortReason = orchestratorResponse.abortReason || 'Aborted by orchestrator';
                   break;
                 } else if (orchestratorResponse.action === 'adjust' && orchestratorResponse.adjustment) {
                   await this.handleAdjustment(assignment, orchestratorResponse.adjustment);
@@ -539,7 +539,7 @@ export class AutonomousWorker extends EventEmitter {
           );
           if (questionResponse.action === 'abort') {
             aborted = true;
-            abortReason = questionResponse.abortReason || '编排者终止执行';
+            abortReason = questionResponse.abortReason || 'Aborted by orchestrator';
             logger.info('Worker.Assignment.被编排者终止', { assignmentId: assignment.id, reason: abortReason }, LogCategory.ORCHESTRATOR);
             break;
           }
@@ -563,7 +563,7 @@ export class AutonomousWorker extends EventEmitter {
           // 检查是否应该跳过依赖的 Todo
           const dependentTodos = this.getDependentTodos(currentTodo, assignment);
           for (const depTodo of dependentTodos) {
-            const blockedReason = `依赖的 Todo "${currentTodo.content}" 失败`;
+            const blockedReason = `Dependent todo "${currentTodo.content}" failed`;
             let skippedTodo: UnifiedTodo = {
               ...depTodo,
               status: 'skipped',
@@ -661,7 +661,7 @@ export class AutonomousWorker extends EventEmitter {
             currentTodo = this.getNextExecutableTodo(assignment);
           }
         } catch (verifyError: any) {
-          const warning = `验收检查第 ${reviewRound + 1} 轮异常：${verifyError?.message || String(verifyError)}`;
+          const warning = `Acceptance verification round ${reviewRound + 1} error: ${verifyError?.message || String(verifyError)}`;
           verificationDegraded = true;
           verificationWarnings.push(warning);
           logger.warn('Worker.验收检查.降级', {
@@ -707,7 +707,7 @@ export class AutonomousWorker extends EventEmitter {
         if (todo.status === 'pending' && !skippedTodos.includes(todo)) {
           await this.todoManager.skip(todo.id);
           todo.status = 'skipped';
-          todo.blockedReason = abortReason || '被编排者终止';
+          todo.blockedReason = abortReason || 'Aborted by orchestrator';
           skippedTodos.push(todo);
         }
       }
@@ -723,7 +723,7 @@ export class AutonomousWorker extends EventEmitter {
       dynamicTodos,
       recoveredTodos: [],
       totalDuration: Date.now() - startTime,
-      errors: aborted ? [...errors, abortReason || '被编排者终止'] : errors,
+      errors: aborted ? [...errors, abortReason || 'Aborted by orchestrator'] : errors,
       recoveryAttempts: session?.stateSnapshot.retryCount || 0,
       summary: '', // 占位，qualityGate 后由 buildStructuredSummary 填充
       tokenUsage: totalTokenUsage,
@@ -775,7 +775,7 @@ export class AutonomousWorker extends EventEmitter {
 
       const finalReport = qualityCheckedResult.success
         ? createCompletedReport(this.workerType, assignment.id, finalResult)
-        : createFailedReport(this.workerType, assignment.id, qualityCheckedResult.errors[0] || '执行失败', finalResult);
+        : createFailedReport(this.workerType, assignment.id, qualityCheckedResult.errors[0] || 'Execution failed', finalResult);
 
       try {
         await options.onReport(finalReport);
@@ -817,22 +817,22 @@ export class AutonomousWorker extends EventEmitter {
           : t.content;
         return `- ${action}`;
       });
-      sections.push(`完成 ${result.completedTodos.length} 步:\n${completedLines.join('\n')}`);
+      sections.push(`Completed ${result.completedTodos.length} step(s):\n${completedLines.join('\n')}`);
     }
 
     // 2. 失败的工作
     if (result.failedTodos.length > 0) {
       const failedLines = result.failedTodos.map(t => {
-        const reason = t.output?.summary || t.blockedReason || '未知原因';
+        const reason = t.output?.summary || t.blockedReason || 'Unknown reason';
         const shortReason = reason.length > 80 ? reason.substring(0, 80) + '...' : reason;
         return `- ${t.content}: ${shortReason}`;
       });
-      sections.push(`失败 ${result.failedTodos.length} 步:\n${failedLines.join('\n')}`);
+      sections.push(`Failed ${result.failedTodos.length} step(s):\n${failedLines.join('\n')}`);
     }
 
     // 3. 错误信息（如果有且不在 failedTodos 中已体现的）
     if (result.errors.length > 0 && result.failedTodos.length === 0) {
-      sections.push(`错误: ${result.errors[0]}`);
+      sections.push(`Error: ${result.errors[0]}`);
     }
 
     // 4. 修改的文件
@@ -842,25 +842,25 @@ export class AutonomousWorker extends EventEmitter {
     ];
     const uniqueFiles = [...new Set(allFiles)];
     if (uniqueFiles.length > 0) {
-      sections.push(`修改文件: ${uniqueFiles.join(', ')}`);
+      sections.push(`Modified files: ${uniqueFiles.join(', ')}`);
     }
 
     // 5. 跳过的工作
     if (result.skippedTodos.length > 0) {
-      sections.push(`跳过 ${result.skippedTodos.length} 步`);
+      sections.push(`Skipped ${result.skippedTodos.length} step(s)`);
     }
 
     // 6. 验收检查状态（避免“检查异常=完全通过”的误导）
     if (result.verification.attempted) {
       if (result.verification.degraded) {
-        const warning = result.verification.warnings[0] || '验收检查执行异常';
-        sections.push(`验收检查: 降级（${warning}）`);
+        const warning = result.verification.warnings[0] || 'Acceptance verification encountered an error';
+        sections.push(`Acceptance verification: Degraded (${warning})`);
       } else {
-        sections.push(`验收检查: 通过（轮次 ${result.verification.rounds + 1}）`);
+        sections.push(`Acceptance verification: Passed (round ${result.verification.rounds + 1})`);
       }
     }
 
-    return sections.length > 0 ? sections.join('\n') : (result.success ? '任务完成' : '任务失败');
+    return sections.length > 0 ? sections.join('\n') : (result.success ? 'Task completed' : 'Task failed');
   }
 
   /**
@@ -877,7 +877,7 @@ export class AutonomousWorker extends EventEmitter {
     const briefing = assignment.delegationBriefing;
     if (!briefing) return [];
 
-    const sectionMatch = briefing.match(/## 验收标准\n([\s\S]*?)(?=\n## |$)/);
+    const sectionMatch = briefing.match(/## Acceptance Criteria\n([\s\S]*?)(?=\n## |$)/) || briefing.match(/## 验收标准\n([\s\S]*?)(?=\n## |$)/);
     if (!sectionMatch) return [];
 
     const acceptance = sectionMatch[1]
@@ -889,42 +889,42 @@ export class AutonomousWorker extends EventEmitter {
     // 2. 构建验收 prompt
     const completedWork = completedTodos
       .filter(t => !assignment.todos.some(c => c.parentId === t.id))
-      .map(t => `- ${t.content}: ${t.output?.summary || '完成'}`)
+      .map(t => `- ${t.content}: ${t.output?.summary || 'Completed'}`)
       .join('\n');
 
     const criteriaList = acceptance
       .map((c, i) => `${i + 1}. ${c}`)
       .join('\n');
 
-    const prompt = `## 验收检查（第 ${round + 1} 轮）
+    const prompt = `## Acceptance Verification (Round ${round + 1})
 
-你刚完成了所有计划中的任务步骤。现在请对照验收标准，逐条检查已完成的工作是否真正满足要求。
+You have just completed all planned task steps. Now verify the completed work against each acceptance criterion to confirm genuine satisfaction.
 
-### 验收标准
+### Acceptance Criteria
 ${criteriaList}
 
-### 已完成工作
+### Completed Work
 ${completedWork}
 
-### 指令
-请逐条检查验收标准。注意："步骤已执行" ≠ "标准已满足"，请基于已完成工作检查实际产出质量。
+### Instructions
+Check each acceptance criterion one by one. Note: "step was executed" does NOT equal "criterion is satisfied" — verify the actual output quality based on completed work.
 
-检查完成后，请以如下 JSON 格式回复：
+After verification, respond in the following JSON format:
 \`\`\`json
 {
   "allSatisfied": true,
   "gaps": []
 }
 \`\`\`
-如有未满足的标准：
+If any criterion is not satisfied:
 \`\`\`json
 {
   "allSatisfied": false,
   "gaps": [
     {
-      "criterion": "未满足的验收标准原文",
-      "reason": "为什么未满足",
-      "fix": "需要做什么来满足此标准"
+      "criterion": "The unsatisfied acceptance criterion (verbatim)",
+      "reason": "Why it is not satisfied",
+      "fix": "What needs to be done to satisfy this criterion"
     }
   ]
 }
@@ -934,7 +934,7 @@ ${completedWork}
     // 必须走静默调用，禁止将结构化验收结果暴露到 UI
     const response = await options.adapterFactory!.sendSilentMessage(this.workerType, prompt);
     if (response.error) {
-      throw new Error(`验收检查静默调用失败: ${response.error}`);
+      throw new Error(`Acceptance verification silent call failed: ${response.error}`);
     }
 
     // 4. 解析验收结果
@@ -968,7 +968,7 @@ ${completedWork}
         assignmentId: assignment.id,
         content: gap.fix,
         type: 'fix',
-        reasoning: `验收检查第 ${round + 1} 轮: ${gap.criterion} — ${gap.reason}`,
+        reasoning: `Acceptance verification round ${round + 1}: ${gap.criterion} — ${gap.reason}`,
         workerId: assignment.workerId,
       });
       assignment.todos.push(todo);
@@ -1025,7 +1025,7 @@ ${completedWork}
       const response = await Promise.race([
         options.onReport(report),
         new Promise<OrchestratorResponse>((_, reject) =>
-          setTimeout(() => reject(new Error('汇报超时')), options.reportTimeout || 5000)
+          setTimeout(() => reject(new Error('Report timed out')), options.reportTimeout || 5000)
         ),
       ]);
       return response;
@@ -1058,15 +1058,15 @@ ${completedWork}
       assignment.id,
       {
         content: [
-          `Todo 执行失败：${todo.content}`,
-          `失败原因：${errorMessage}`,
-          `恢复策略建议：${decision.strategy}（${decision.reason}）`,
-          '请决定是否补充指令、调整约束或改派任务。',
+          `Todo execution failed: ${todo.content}`,
+          `Failure reason: ${errorMessage}`,
+          `Suggested recovery strategy: ${decision.strategy} (${decision.reason})`,
+          'Please decide whether to provide supplementary instructions, adjust constraints, or reassign the task.',
         ].join('\n'),
         options: [
-          '继续并补充指令',
-          '保持当前约束继续执行',
-          '终止当前任务',
+          'Continue with supplementary instructions',
+          'Continue with current constraints',
+          'Abort current task',
         ],
         blocking: true,
         questionType: 'decision',
@@ -1078,7 +1078,7 @@ ${completedWork}
       return await Promise.race([
         options.onReport(question),
         new Promise<OrchestratorResponse>((_, reject) =>
-          setTimeout(() => reject(new Error('问题上报超时')), options.reportTimeout || 5000)
+          setTimeout(() => reject(new Error('Question report timed out')), options.reportTimeout || 5000)
         ),
       ]);
     } catch (error) {
@@ -1115,7 +1115,7 @@ ${completedWork}
         if (todo) {
           await this.todoManager.skip(todo.id);
           todo.status = 'skipped';
-          todo.blockedReason = '编排者跳过';
+          todo.blockedReason = 'Skipped by orchestrator';
           logger.debug('Worker.跳过步骤', { todoId: todo.id, content: stepContent }, LogCategory.ORCHESTRATOR);
         }
       }
@@ -1128,7 +1128,7 @@ ${completedWork}
         const todo = await this.addDynamicTodo(
           assignment,
           stepContent,
-          '编排者调整指令添加',
+          'Added by orchestrator adjustment',
           'implementation',
           parentTodo?.id
         );
@@ -1179,7 +1179,7 @@ ${completedWork}
     if (normalized.length === 0) {
       return;
     }
-    const content = `[System] 用户补充指令：\n${normalized.map(i => `- ${i}`).join('\n')}`;
+    const content = `[System] Supplementary instructions from user:\n${normalized.map(i => `- ${i}`).join('\n')}`;
     assignment.guidancePrompt = assignment.guidancePrompt
       ? `${assignment.guidancePrompt}\n\n${content}`
       : content;
@@ -1213,7 +1213,7 @@ ${completedWork}
       return {
         success: false,
         todo,
-        error: '超范围 Todo 未获得审批',
+        error: 'Out-of-scope todo not approved',
       };
     }
 
@@ -1282,7 +1282,7 @@ ${completedWork}
         // 父 Todo 保持 running 状态，由 tryCompleteParent 在所有子 Todo 完成后自动标记完成
         todo.output = {
           success: true,
-          summary: `已拆分为 ${assignment.todos.filter(t => t.parentId === todo.id).length} 个子步骤`,
+          summary: `Split into ${assignment.todos.filter(t => t.parentId === todo.id).length} sub-steps`,
           modifiedFiles: [],
           duration: Date.now() - startTime,
         };
@@ -1418,64 +1418,64 @@ ${completedWork}
 
     // 1. 任务委托说明（优先使用 AI 生成的自然语言委托）
     if (assignment.delegationBriefing) {
-      sections.push(`## 任务委托\n${assignment.delegationBriefing}`);
+      sections.push(`## Task Delegation\n${assignment.delegationBriefing}`);
     } else {
       // 兜底：使用结构化的职责描述
-      sections.push(`## 职责分配\n${assignment.responsibility}`);
+      sections.push(`## Responsibility Assignment\n${assignment.responsibility}`);
     }
 
     // 2. 当前 Todo
-    sections.push(`## 当前任务\n${todo.content}`);
-    sections.push(`**原因**: ${todo.reasoning}`);
-    sections.push(`**预期产出**: ${todo.expectedOutput}`);
+    sections.push(`## Current Task\n${todo.content}`);
+    sections.push(`**Rationale**: ${todo.reasoning}`);
+    sections.push(`**Expected Output**: ${todo.expectedOutput}`);
 
     // 3. 职责范围提醒
     if (assignment.scope.excludes.length > 0) {
-      sections.push(`## 注意：以下内容不在你的职责范围内\n${assignment.scope.excludes.map(e => `- ${e}`).join('\n')}`);
+      sections.push(`## Note: The following items are outside your responsibility scope\n${assignment.scope.excludes.map(e => `- ${e}`).join('\n')}`);
     }
 
     // 3.1 范围线索（非硬约束）
     if (assignment.scope.scopeHints && assignment.scope.scopeHints.length > 0) {
-      sections.push(`## 范围线索（非硬约束）\n${assignment.scope.scopeHints.map(p => `- ${p}`).join('\n')}\n\n先从以上线索定位，再根据实际情况自然扩展。`);
+      sections.push(`## Scope Hints (soft constraints)\n${assignment.scope.scopeHints.map(p => `- ${p}`).join('\n')}\n\nStart by locating code from the above hints, then expand naturally based on actual needs.`);
     }
 
     // 3.1 目标文件（若有）
     if (assignment.scope.targetPaths && assignment.scope.targetPaths.length > 0) {
       const requirement = assignment.scope.requiresModification
-        ? '任务性质：需要对上述严格目标文件产生实际修改并保存。'
-        : '任务性质：仅需读取/分析，无需修改文件。';
-      sections.push(`## 严格目标文件\n${assignment.scope.targetPaths.map(p => `- ${p}`).join('\n')}\n\n${requirement}`);
+        ? 'Task nature: You must produce actual modifications to the strict target files listed above and save them.'
+        : 'Task nature: Read/analyze only — no file modifications required.';
+      sections.push(`## Strict Target Files\n${assignment.scope.targetPaths.map(p => `- ${p}`).join('\n')}\n\n${requirement}`);
     }
 
     // 3.2 目标文件摘要（强制缓存前置读取）
     if (targetFileContext) {
-      sections.push(`## 目标文件摘要\n${targetFileContext}`);
+      sections.push(`## Target File Summaries\n${targetFileContext}`);
     }
 
     // 4. 契约信息
     if (todo.requiredContracts.length > 0) {
-      sections.push(`## 依赖的契约\n${todo.requiredContracts.map(c => `- ${c}`).join('\n')}`);
+      sections.push(`## Required Contracts\n${todo.requiredContracts.map(c => `- ${c}`).join('\n')}`);
     }
 
     // 5. Assignment 级执行约束（角色定义在 Worker systemPrompt）
     if (assignment.guidancePrompt) {
-      sections.push(`## 执行约束\n${assignment.guidancePrompt}`);
+      sections.push(`## Execution Constraints\n${assignment.guidancePrompt}`);
     }
 
     // 6. 任务拆分指引（L1/L2 可拆分，L3 不可）
     const hasGrandparent = todo.parentId && assignment.todos.find(t => t.id === todo.parentId)?.parentId;
     if (!hasGrandparent) {
-      sections.push(`## 任务拆分
-如果当前任务涉及多个可独立完成和验证的子目标，可使用 split_todo 将其拆分为子步骤。
-拆分适用：任务包含多个独立子目标，拆分后每个子步骤可单独完成和验证。
-不适用：任务本身是单一目标，直接执行即可。`);
+      sections.push(`## Task Splitting
+If the current task involves multiple independently completable and verifiable sub-goals, you may use split_todo to break it into sub-steps.
+Applicable: The task contains multiple independent sub-goals where each sub-step can be completed and verified individually.
+Not applicable: The task itself is a single goal — execute it directly.`);
     }
 
     // 7. 子 Todo 上下文（L2/L3 展示父级关系，聚焦当前子步骤）
     if (todo.parentId) {
       const parentTodo = assignment.todos.find(t => t.id === todo.parentId);
       if (parentTodo) {
-        sections.push(`## 父级任务\n当前步骤是以下任务的子步骤：${parentTodo.content}\n请聚焦完成当前子步骤的目标，不要重复处理兄弟步骤的内容。`);
+        sections.push(`## Parent Task\nThis step is a sub-step of: ${parentTodo.content}\nFocus on completing the current sub-step's goal only — do not duplicate work from sibling steps.`);
       }
     }
 
@@ -1500,11 +1500,11 @@ ${completedWork}
   }> {
     // 必须提供 adapterFactory
     if (!options.adapterFactory) {
-      throw new Error('adapterFactory 是必需的，当前项目仅支持 LLM API 模式');
+      throw new Error('adapterFactory is required — only LLM API mode is supported');
     }
 
     // 组合执行 prompt 和自检引导
-    const fullPrompt = `${executionPrompt}\n\n## 自检要点\n${selfCheckGuidance}`;
+    const fullPrompt = `${executionPrompt}\n\n## Self-Check Checklist\n${selfCheckGuidance}`;
 
     try {
       const decisionHook = options.getSupplementaryInstructions
@@ -1534,7 +1534,7 @@ ${completedWork}
       }
 
       // 解析响应
-      const summary = response.content || response.error || '执行完成';
+      const summary = response.content || response.error || 'Execution completed';
       const modifiedFiles = this.extractModifiedFiles(response.content || '');
 
       // 调用输出回调
@@ -1716,26 +1716,26 @@ ${completedWork}
     // 注入当前指派的任务 (Todos)
     if (assignment && assignment.todos && assignment.todos.length > 0) {
       const todosSummary = assignment.todos.map(t => `- [${t.status}] ID: ${t.id} - ${t.content}`).join('\n');
-      sharedSections.push(`### 当前指派的任务 (Todos)\n${todosSummary}`);
+      sharedSections.push(`### Assigned Tasks (Todos)\n${todosSummary}`);
     }
 
     if (sharedContext && sharedContext.parts.length > 0) {
       for (const part of sharedContext.parts) {
         switch (part.type) {
           case 'project_knowledge':
-            sharedSections.push(`### 项目知识\n${part.content}`);
+            sharedSections.push(`### Project Knowledge\n${part.content}`);
             break;
           case 'shared_context':
-            sharedSections.push(`### 共享上下文\n${part.content}`);
+            sharedSections.push(`### Shared Context\n${part.content}`);
             break;
           case 'contracts':
-            sharedSections.push(`### 任务契约\n${part.content}`);
+            sharedSections.push(`### Task Contracts\n${part.content}`);
             break;
           case 'recent_turns':
-            sharedSections.push(`### 最近对话\n${part.content}`);
+            sharedSections.push(`### Recent Conversation\n${part.content}`);
             break;
           case 'long_term_memory':
-            sharedSections.push(`### 历史记忆\n${part.content}`);
+            sharedSections.push(`### Historical Memory\n${part.content}`);
             break;
           default:
             break;
@@ -1747,7 +1747,7 @@ ${completedWork}
       return null;
     }
 
-    return `## 共享知识\n\n${sharedSections.join('\n\n')}`;
+    return `## Shared Knowledge\n\n${sharedSections.join('\n\n')}`;
   }
 
   /**
@@ -1777,8 +1777,8 @@ ${completedWork}
         const content = fileResult.type === 'summary'
           ? fileResult.content
           : this.formatSummary(this.generateFileSummaryFromContent(fileResult.content, absolutePath));
-        const sourceLabel = fileResult.fromCache ? '缓存摘要' : '实时摘要';
-        sections.push(`### ${targetPath}\n来源: ${sourceLabel}\n${content}`);
+        const sourceLabel = fileResult.fromCache ? 'Cached summary' : 'Live summary';
+        sections.push(`### ${targetPath}\nSource: ${sourceLabel}\n${content}`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.warn('Worker.目标文件.读取失败', {
@@ -1787,12 +1787,12 @@ ${completedWork}
           targetPath,
           error: errorMessage,
         }, LogCategory.ORCHESTRATOR);
-        sections.push(`### ${targetPath}\n来源: 读取失败\n${errorMessage}`);
+        sections.push(`### ${targetPath}\nSource: Read failed\n${errorMessage}`);
       }
     }
 
     if (targetPaths.length > maxFiles) {
-      sections.push(`已按预算裁剪，额外省略 ${targetPaths.length - maxFiles} 个目标文件。`);
+      sections.push(`Trimmed by budget — ${targetPaths.length - maxFiles} additional target file(s) omitted.`);
     }
 
     return sections.join('\n\n');
@@ -1810,8 +1810,8 @@ ${completedWork}
     const scopeText = todo ? todo.content : assignment.responsibility;
     const summaryText = this.trimInsightContent(summary, 600);
     const fileSummary = modifiedFiles.length > 0
-      ? `涉及文件: ${modifiedFiles.slice(0, 6).join(', ')}`
-      : '未检测到明确文件变更。';
+      ? `Files involved: ${modifiedFiles.slice(0, 6).join(', ')}`
+      : 'No explicit file changes detected.';
     const tags = this.buildInsightTags(assignment, modifiedFiles);
     const facts = this.extractTypedFacts(summaryText);
     const fallbackTypes = this.getDefaultInsightTypes('success');
@@ -1825,7 +1825,7 @@ ${completedWork}
       const typedFact = facts.find((fact) => fact.type === type)?.content || summaryText;
       insights.push({
         type,
-        content: `任务成功: ${scopeText}\n结论(${this.describeInsightType(type)}): ${typedFact}\n${fileSummary}`,
+        content: `Task succeeded: ${scopeText}\nConclusion(${this.describeInsightType(type)}): ${typedFact}\n${fileSummary}`,
         tags: Array.from(new Set([...tags, type])),
         importance: modifiedFiles.length > 0 ? 'high' : 'medium',
       });
@@ -1848,7 +1848,7 @@ ${completedWork}
     const typeOrder = this.getDefaultInsightTypes('failure');
     return typeOrder.map((type) => ({
       type,
-      content: `任务失败: ${scopeText}\n结论(${this.describeInsightType(type)}): ${errorText}`,
+      content: `Task failed: ${scopeText}\nConclusion(${this.describeInsightType(type)}): ${errorText}`,
       tags: Array.from(new Set([...tags, type])),
       importance: 'high',
     }));
@@ -1915,26 +1915,26 @@ ${completedWork}
     const gateErrors: string[] = [];
 
     if (sharedContext && sharedContext.budgetUsage > 1) {
-      gateErrors.push('质量门禁失败: 共享上下文预算超限。');
+      gateErrors.push('Quality gate failed: Shared context budget exceeded.');
     }
 
     if (result.success) {
       if (!sharedContext) {
-        gateErrors.push('质量门禁失败: 未注入共享上下文。');
+        gateErrors.push('Quality gate failed: Shared context was not injected.');
       }
 
       if (!this.hasWorkerSharedFacts(assignment.missionId, startedAt)) {
-        gateErrors.push('质量门禁失败: 未写入可复用共享事实。');
+        gateErrors.push('Quality gate failed: No reusable shared facts were written.');
       }
 
       const hasTargetFiles = (assignment.scope.targetPaths?.length || 0) > 0;
       if (hasTargetFiles && this.cacheReadStats.lookups === 0) {
-        gateErrors.push('质量门禁失败: 目标文件未经过缓存前置读取。');
+        gateErrors.push('Quality gate failed: Target files were not pre-read through cache.');
       }
 
       const unknownRequiredContracts = this.collectUnknownRequiredContracts(assignment);
       if (unknownRequiredContracts.length > 0) {
-        gateErrors.push(`质量门禁失败: 发现未声明的契约依赖 ${unknownRequiredContracts.join(', ')}`);
+        gateErrors.push(`Quality gate failed: Undeclared contract dependencies found: ${unknownRequiredContracts.join(', ')}`);
       }
     }
 
@@ -2344,7 +2344,7 @@ ${completedWork}
       // 检查路径是否为目录，避免 EISDIR 错误
       const stat = await fs.stat(filePath);
       if (stat.isDirectory()) {
-        throw new Error(`路径是目录而非文件: ${filePath}`);
+        throw new Error(`Path is a directory, not a file: ${filePath}`);
       }
 
       // 1. 读取文件并计算当前 hash（避免重复 I/O）
@@ -2392,7 +2392,7 @@ ${completedWork}
     } catch (error) {
       this.cacheReadStats.cacheMisses++;
       const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`读取文件失败: ${filePath}, 错误: ${errorMessage}`);
+      throw new Error(`Failed to read file: ${filePath}, error: ${errorMessage}`);
     }
   }
 
@@ -2513,7 +2513,7 @@ ${completedWork}
     // 仅检查业务状态：currentMissionId（sharedContextPool 强制依赖已保证可用）
     if (!this.currentMissionId) {
       logger.debug('Worker.洞察.跳过写入', {
-        reason: '无当前 Mission',
+        reason: 'No active Mission',
       }, LogCategory.ORCHESTRATOR);
       return;
     }
@@ -2623,7 +2623,7 @@ ${completedWork}
 
     // 备用：从文件名推断
     const fileName = filePath.split('/').pop() || filePath;
-    return `${fileName} 模块`;
+    return `${fileName} module`;
   }
 
   /**
@@ -2637,16 +2637,16 @@ ${completedWork}
 
     const parts: string[] = [];
     if (classMatches.length > 0) {
-      parts.push(`定义了 ${classMatches.length} 个类`);
+      parts.push(`Defines ${classMatches.length} class(es)`);
     }
     if (functionMatches.length > 0) {
-      parts.push(`包含 ${functionMatches.length} 个函数/方法`);
+      parts.push(`Contains ${functionMatches.length} function(s)/method(s)`);
     }
     if (interfaceMatches.length > 0) {
-      parts.push(`声明了 ${interfaceMatches.length} 个接口`);
+      parts.push(`Declares ${interfaceMatches.length} interface(s)`);
     }
 
-    return parts.length > 0 ? parts.join('，') + '。' : '代码逻辑待分析。';
+    return parts.length > 0 ? parts.join(', ') + '.' : 'Code logic pending analysis.';
   }
 
   /**
@@ -2711,21 +2711,21 @@ ${completedWork}
   private formatSummary(summary: FileSummary): string {
     const lines: string[] = [];
 
-    lines.push(`**目的**: ${summary.purpose}`);
-    lines.push(`**核心逻辑**: ${summary.coreLogic}`);
+    lines.push(`**Purpose**: ${summary.purpose}`);
+    lines.push(`**Core Logic**: ${summary.coreLogic}`);
 
     if (summary.keyExports && summary.keyExports.length > 0) {
-      lines.push(`**关键导出**: ${summary.keyExports.join(', ')}`);
+      lines.push(`**Key Exports**: ${summary.keyExports.join(', ')}`);
     }
 
     if (summary.dependencies && summary.dependencies.length > 0) {
-      lines.push(`**依赖**: ${summary.dependencies.join(', ')}`);
+      lines.push(`**Dependencies**: ${summary.dependencies.join(', ')}`);
     }
 
-    lines.push(`**代码行数**: ${summary.lineCount}`);
+    lines.push(`**Lines of Code**: ${summary.lineCount}`);
 
     if (summary.hasSensitiveLogic) {
-      lines.push(`**注意**: 包含敏感逻辑`);
+      lines.push(`**Note**: Contains sensitive logic`);
     }
 
     return lines.join('\n');
@@ -2773,13 +2773,13 @@ ${completedWork}
   private describeInsightType(type: WorkerInsightType): string {
     switch (type) {
       case 'decision':
-        return '决策';
+        return 'decision';
       case 'contract':
-        return '契约';
+        return 'contract';
       case 'risk':
-        return '风险';
+        return 'risk';
       case 'constraint':
-        return '约束';
+        return 'constraint';
       default:
         return type;
     }

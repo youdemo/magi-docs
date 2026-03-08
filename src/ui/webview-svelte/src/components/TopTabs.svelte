@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getState } from '../stores/messages.svelte';
   import { ensureArray } from '../lib/utils';
+  import { i18n } from '../stores/i18n.svelte';
 
   interface Props {
     activeTopTab: 'thread' | 'tasks' | 'edits' | 'knowledge';
@@ -18,22 +19,22 @@
 
 <div class="tt-bar">
   <button class="tt-tab" class:active={activeTopTab === 'thread'} onclick={() => onTabChange('thread')}>
-    对话
+    {i18n.t('topTabs.thread')}
   </button>
   <button class="tt-tab" class:active={activeTopTab === 'tasks'} onclick={() => onTabChange('tasks')}>
-    任务
+    {i18n.t('topTabs.tasks')}
     {#if tasksBadge > 0}
       <span class="tt-badge">{tasksBadge}</span>
     {/if}
   </button>
   <button class="tt-tab" class:active={activeTopTab === 'edits'} onclick={() => onTabChange('edits')}>
-    变更
+    {i18n.t('topTabs.edits')}
     {#if editsBadge > 0}
       <span class="tt-badge">{editsBadge}</span>
     {/if}
   </button>
   <button class="tt-tab" class:active={activeTopTab === 'knowledge'} onclick={() => onTabChange('knowledge')}>
-    知识
+    {i18n.t('topTabs.knowledge')}
   </button>
 </div>
 

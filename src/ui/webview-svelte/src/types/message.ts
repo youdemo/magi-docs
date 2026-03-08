@@ -2,6 +2,8 @@
  * 消息类型定义
  */
 
+import type { LocaleCode } from '../../../../i18n/types';
+
 // 消息角色
 export type MessageRole = 'user' | 'assistant' | 'system';
 
@@ -414,6 +416,7 @@ export interface AppState {
   isProcessing?: boolean;
   pendingChanges?: unknown[];
   tasks?: Task[];
+  locale?: LocaleCode;
   activePlan?: ActivePlanState | null;
   planHistory?: PlanLedgerRecord[];
   edits?: Edit[];

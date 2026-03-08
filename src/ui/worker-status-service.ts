@@ -9,6 +9,7 @@
  */
 
 import { logger, LogCategory } from '../logging';
+import { t } from '../i18n';
 import type { WorkerSlot } from '../types';
 import type { AgentType } from '../types/agent-types';
 import type { DataMessageType } from '../protocol/message-protocol';
@@ -76,7 +77,7 @@ export class WorkerStatusService {
       return `${modelConfig.provider} - ${modelConfig.model}`;
     };
     const orchestratorLabel = formatModelLabel(config.orchestrator);
-    const auxiliaryFallbackLabel = orchestratorLabel ? `编排模型: ${orchestratorLabel}` : '编排模型';
+    const auxiliaryFallbackLabel = orchestratorLabel ? t('workerStatus.orchestratorModelLabel', { label: orchestratorLabel }) : t('workerStatus.orchestratorModelFallback');
     const setAuxiliaryFallback = (reason: string) => {
       statuses.auxiliary = { status: 'fallback', model: auxiliaryFallbackLabel, error: reason };
     };
@@ -107,24 +108,24 @@ export class WorkerStatusService {
       const isAuxiliary = name === 'auxiliary';
       if (!modelConfig.enabled || !modelConfig.apiKey || !modelConfig.model) {
         if (isAuxiliary) {
-          setAuxiliaryFallback(!modelConfig.enabled ? '辅助模型未启用' : '辅助模型未配置');
+          setAuxiliaryFallback(!modelConfig.enabled ? t('workerStatus.auxiliaryNotEnabled') : t('workerStatus.auxiliaryNotConfigured'));
           return;
         }
         if (!modelConfig.enabled) {
           statuses[name] = {
             status: 'disabled',
-            model: '已禁用'
+            model: t('workerStatus.disabled')
           };
           return;
         }
         statuses[name] = {
           status: 'not_configured',
-          model: isRequired ? '未配置（必需）' : '未配置'
+          model: isRequired ? t('workerStatus.notConfiguredRequired') : t('workerStatus.notConfigured')
         };
         return;
       }
 
-      const modelLabel = formatModelLabel(modelConfig) || '未配置';
+      const modelLabel = formatModelLabel(modelConfig) || t('workerStatus.notConfigured');
       if (!force) {
         const isConnected = name !== 'auxiliary'
           && adapterFactory.isConnected(name as AgentType);
@@ -151,10 +152,10 @@ export class WorkerStatusService {
           // 检查模型是否存在（如果 API 支持）
           if (result.modelExists === false) {
             if (isAuxiliary) {
-              setAuxiliaryFallback(`模型不存在: ${modelConfig.model}`);
+              setAuxiliaryFallback(t('workerStatus.modelNotFound', { model: modelConfig.model }));
               return;
             }
-            statuses[name] = { status: 'invalid_model', model: modelLabel, error: `模型不存在: ${modelConfig.model}` };
+            statuses[name] = { status: 'invalid_model', model: modelLabel, error: t('workerStatus.modelNotFound', { model: modelConfig.model }) };
           } else {
             statuses[name] = {
               status: 'available',
@@ -163,7 +164,7 @@ export class WorkerStatusService {
           }
         } else {
           if (isAuxiliary) {
-            setAuxiliaryFallback(result.error || '辅助模型连接失败');
+            setAuxiliaryFallback(result.error || t('workerStatus.auxiliaryConnectionFailed'));
             return;
           }
           // 根据错误类型设置状态
@@ -191,7 +192,7 @@ export class WorkerStatusService {
         }, LogCategory.LLM);
       } catch (error: any) {
         if (isAuxiliary) {
-          setAuxiliaryFallback(error.message || '辅助模型连接失败');
+          setAuxiliaryFallback(error.message || t('workerStatus.auxiliaryConnectionFailed'));
           return;
         }
         statuses[name] = { status: 'error', model: modelLabel, error: error.message };
@@ -211,23 +212,23 @@ export class WorkerStatusService {
           : config.workers[name as WorkerSlot];
 
       if (name === 'auxiliary' && (!modelConfig?.enabled || !modelConfig?.apiKey || !modelConfig?.model)) {
-        setAuxiliaryFallback(!modelConfig?.enabled ? '辅助模型未启用' : '辅助模型未配置');
+        setAuxiliaryFallback(!modelConfig?.enabled ? t('workerStatus.auxiliaryNotEnabled') : t('workerStatus.auxiliaryNotConfigured'));
         return;
       }
 
       if (!modelConfig?.enabled) {
-        statuses[name] = { status: 'disabled', model: '已禁用' };
+        statuses[name] = { status: 'disabled', model: t('workerStatus.disabled') };
         return;
       }
       if (!modelConfig?.apiKey || !modelConfig?.model) {
         statuses[name] = {
           status: 'not_configured',
-          model: name === 'orchestrator' || name === 'auxiliary' ? '未配置（必需）' : '未配置'
+          model: name === 'orchestrator' || name === 'auxiliary' ? t('workerStatus.notConfiguredRequired') : t('workerStatus.notConfigured')
         };
         return;
       }
 
-      const modelLabel = formatModelLabel(modelConfig) || '未配置';
+      const modelLabel = formatModelLabel(modelConfig) || t('workerStatus.notConfigured');
       if (!force) {
         const isConnected = name !== 'auxiliary'
           && adapterFactory.isConnected(name as AgentType);

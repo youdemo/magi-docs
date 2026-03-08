@@ -24,6 +24,7 @@ import type {
 } from '../types/message';
 import { vscode } from '../lib/vscode-bridge';
 import { ensureArray } from '../lib/utils';
+import { i18n } from './i18n.svelte';
 
 // ============ 状态定义 ============
 // 🔧 修复：使用对象属性模式确保跨模块响应式正常工作
@@ -350,7 +351,7 @@ function scheduleInteractionModeSyncTimeout(expectedMode: 'ask' | 'auto') {
   interactionModeSyncTimer = setTimeout(() => {
     if (requestedInteractionMode === expectedMode) {
       requestedInteractionMode = null;
-      addToast('warning', '交互模式切换超时，已回退同步状态');
+      addToast('warning', i18n.t('messageHandler.interactionModeSyncTimeout'));
     }
     interactionModeSyncTimer = null;
   }, INTERACTION_MODE_SYNC_TIMEOUT_MS);

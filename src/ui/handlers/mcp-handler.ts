@@ -8,6 +8,7 @@
 import { logger, LogCategory } from '../../logging';
 import type { WebviewToExtensionMessage } from '../../types';
 import type { CommandHandler, CommandHandlerContext } from './types';
+import { t } from '../../i18n';
 
 type Msg<T extends string> = Extract<WebviewToExtensionMessage, { type: T }>;
 
@@ -100,7 +101,7 @@ export class McpCommandHandler implements CommandHandler {
       ctx.sendData('mcpServersLoaded', { servers: mergedServers });
     } catch (error: any) {
       logger.error('加载 MCP 服务器列表失败', { error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`加载 MCP 服务器失败: ${error.message}`, 'error');
+      ctx.sendToast(t('mcp.toast.loadFailed', { error: error.message }), 'error');
     }
   }
 
@@ -115,13 +116,13 @@ export class McpCommandHandler implements CommandHandler {
 
       LLMConfigLoader.addMCPServer(server);
       ctx.sendData('mcpServerAdded', { server });
-      ctx.sendToast(`MCP 服务器 "${server.name}" 已添加`, 'success');
+      ctx.sendToast(t('mcp.toast.serverAdded', { name: server.name }), 'success');
 
       await ctx.getAdapterFactory().reloadMCP();
       logger.info('MCP 服务器已添加', { id: server.id, name: server.name }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('添加 MCP 服务器失败', { error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`添加 MCP 服务器失败: ${error.message}`, 'error');
+      ctx.sendToast(t('mcp.toast.addFailed', { error: error.message }), 'error');
     }
   }
 
@@ -130,12 +131,12 @@ export class McpCommandHandler implements CommandHandler {
       const { LLMConfigLoader } = await import('../../llm/config');
       LLMConfigLoader.updateMCPServer(message.serverId, message.updates);
       ctx.sendData('mcpServerUpdated', { serverId: message.serverId });
-      ctx.sendToast('MCP 服务器已更新', 'success');
+      ctx.sendToast(t('mcp.toast.serverUpdated'), 'success');
       await ctx.getAdapterFactory().reloadMCP();
       logger.info('MCP 服务器已更新', { id: message.serverId }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('更新 MCP 服务器失败', { error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`更新 MCP 服务器失败: ${error.message}`, 'error');
+      ctx.sendToast(t('mcp.toast.updateFailed', { error: error.message }), 'error');
     }
   }
 
@@ -146,12 +147,12 @@ export class McpCommandHandler implements CommandHandler {
       await manager.disconnectServer(message.serverId);
       LLMConfigLoader.deleteMCPServer(message.serverId);
       ctx.sendData('mcpServerDeleted', { serverId: message.serverId });
-      ctx.sendToast('MCP 服务器已删除', 'success');
+      ctx.sendToast(t('mcp.toast.serverDeleted'), 'success');
       await ctx.getAdapterFactory().reloadMCP();
       logger.info('MCP 服务器已删除', { id: message.serverId }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('删除 MCP 服务器失败', { error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`删除 MCP 服务器失败: ${error.message}`, 'error');
+      ctx.sendToast(t('mcp.toast.deleteFailed', { error: error.message }), 'error');
     }
   }
 
@@ -166,12 +167,12 @@ export class McpCommandHandler implements CommandHandler {
       const manager = await this.getMCPManager(ctx);
       await manager.connectServer(server);
       const tools = manager.getServerTools(message.serverId);
-      ctx.sendToast(`MCP 服务器 "${server.name}" 已连接，发现 ${tools.length} 个工具`, 'success');
+      ctx.sendToast(t('mcp.toast.serverConnected', { name: server.name, count: tools.length }), 'success');
       await this.handleLoadMCPServers(ctx);
       logger.info('MCP 服务器已连接', { id: message.serverId, toolCount: tools.length }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('连接 MCP 服务器失败', { serverId: message.serverId, error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`连接 MCP 服务器失败: ${error.message}`, 'error');
+      ctx.sendToast(t('mcp.toast.connectFailed', { error: error.message }), 'error');
     }
   }
 
@@ -179,12 +180,12 @@ export class McpCommandHandler implements CommandHandler {
     try {
       const manager = await this.getMCPManager(ctx);
       await manager.disconnectServer(message.serverId);
-      ctx.sendToast('MCP 服务器已断开连接', 'success');
+      ctx.sendToast(t('mcp.toast.serverDisconnected'), 'success');
       await this.handleLoadMCPServers(ctx);
       logger.info('MCP 服务器已断开', { id: message.serverId }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('断开 MCP 服务器失败', { error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`断开 MCP 服务器失败: ${error.message}`, 'error');
+      ctx.sendToast(t('mcp.toast.disconnectFailed', { error: error.message }), 'error');
     }
   }
 
@@ -194,11 +195,11 @@ export class McpCommandHandler implements CommandHandler {
       const tools = await manager.refreshServerTools(message.serverId);
       ctx.sendData('mcpToolsRefreshed', { serverId: message.serverId, tools });
       await this.handleLoadMCPServers(ctx);
-      ctx.sendToast(`工具列表已刷新，发现 ${tools.length} 个工具`, 'success');
+      ctx.sendToast(t('mcp.toast.toolsRefreshed', { count: tools.length }), 'success');
       logger.info('MCP 工具列表已刷新', { serverId: message.serverId, toolCount: tools.length }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('刷新 MCP 工具列表失败', { error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`刷新工具列表失败: ${error.message}`, 'error');
+      ctx.sendToast(t('mcp.toast.refreshFailed', { error: error.message }), 'error');
     }
   }
 
@@ -209,7 +210,7 @@ export class McpCommandHandler implements CommandHandler {
       ctx.sendData('mcpServerTools', { serverId: message.serverId, tools });
     } catch (error: any) {
       logger.error('获取 MCP 工具列表失败', { error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`获取工具列表失败: ${error.message}`, 'error');
+      ctx.sendToast(t('mcp.toast.getToolsFailed', { error: error.message }), 'error');
     }
   }
 }

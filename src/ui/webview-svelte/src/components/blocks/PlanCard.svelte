@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ContentBlock } from '../../types/message';
   import Icon from '../Icon.svelte';
+  import { i18n } from '../../stores/i18n.svelte';
 
   interface Props {
     block: ContentBlock;
@@ -16,7 +17,7 @@
     <div class="plan-header">
       <div class="plan-title">
         <Icon name="note" size={14} />
-        <span>任务计划</span>
+        <span>{i18n.t('planCard.title')}</span>
       </div>
       <button class="toggle-btn" onclick={() => (isExpanded = !isExpanded)}>
         <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} />
@@ -27,14 +28,14 @@
 
     {#if plan.analysis}
       <div class="plan-section">
-        <div class="section-title">分析</div>
+        <div class="section-title">{i18n.t('planCard.analysis')}</div>
         <div class="section-body">{plan.analysis}</div>
       </div>
     {/if}
 
     {#if plan.constraints && plan.constraints.length > 0}
       <div class="plan-section">
-        <div class="section-title">约束</div>
+        <div class="section-title">{i18n.t('planCard.constraints')}</div>
         <ul>
           {#each plan.constraints as item}
             <li>{item}</li>
@@ -45,7 +46,7 @@
 
     {#if plan.acceptanceCriteria && plan.acceptanceCriteria.length > 0}
       <div class="plan-section">
-        <div class="section-title">验收标准</div>
+        <div class="section-title">{i18n.t('planCard.acceptanceCriteria')}</div>
         <ul>
           {#each plan.acceptanceCriteria as item}
             <li>{item}</li>
@@ -56,14 +57,14 @@
 
     {#if plan.riskLevel}
       <div class="plan-section">
-        <div class="section-title">风险等级</div>
+        <div class="section-title">{i18n.t('planCard.riskLevel')}</div>
         <div class="risk-badge {plan.riskLevel}">{plan.riskLevel}</div>
       </div>
     {/if}
 
     {#if plan.riskFactors && plan.riskFactors.length > 0}
       <div class="plan-section">
-        <div class="section-title">风险因素</div>
+        <div class="section-title">{i18n.t('planCard.riskFactors')}</div>
         <ul>
           {#each plan.riskFactors as item}
             <li>{item}</li>
@@ -74,7 +75,7 @@
 
     {#if plan.rawJson && isExpanded}
       <div class="plan-raw">
-        <div class="section-title">原始数据</div>
+        <div class="section-title">{i18n.t('planCard.rawData')}</div>
         <pre><code>{plan.rawJson}</code></pre>
       </div>
     {/if}

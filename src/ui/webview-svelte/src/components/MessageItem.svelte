@@ -7,6 +7,7 @@
   import InstructionCard from './InstructionCard.svelte';
   import BlockRenderer from './BlockRenderer.svelte';
   import Icon from './Icon.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
   // Props
   interface Props {
@@ -74,7 +75,7 @@
   // 格式化时间戳
   function formatTime(timestamp: number): string {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('zh-CN', {
+    return date.toLocaleTimeString(i18n.locale, {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -169,15 +170,15 @@
     {#if messageImages.length > 0}
       <div class="user-images">
         {#each messageImages as img, i (`${message.id}-img-${i}`)}
-          <button class="user-image-thumb" onclick={() => openImagePreview(img.dataUrl)} type="button" title="点击放大">
-            <img src={img.dataUrl} alt="附件图片 {i + 1}" />
+          <button class="user-image-thumb" onclick={() => openImagePreview(img.dataUrl)} type="button" title={i18n.t('messageItem.imageClickTitle')}>
+            <img src={img.dataUrl} alt={i18n.t('messageItem.imageAlt', { index: i + 1 })} />
           </button>
         {/each}
       </div>
     {/if}
     <div class="user-content">{message.content}</div>
     <div class="user-time">
-      {#if isSupplementary}<span class="supplementary-tag">补充指令</span>{/if}
+      {#if isSupplementary}<span class="supplementary-tag">{i18n.t('messageItem.supplementaryTag')}</span>{/if}
       {formatTime(message.timestamp)}
     </div>
   </div>
@@ -271,13 +272,13 @@
           {#if isPlaceholder}
             <span class="placeholder-status">
               {#if placeholderState === 'pending'}
-                正在准备...
+                {i18n.t('messageItem.placeholder.pending')}
               {:else if placeholderState === 'received'}
-                已接收...
+                {i18n.t('messageItem.placeholder.received')}
               {:else if placeholderState === 'thinking'}
-                正在思考...
+                {i18n.t('messageItem.placeholder.thinking')}
               {:else}
-                处理中...
+                {i18n.t('messageItem.placeholder.processing')}
               {/if}
             </span>
           {/if}
@@ -285,7 +286,7 @@
         <div class="message-meta">
           <span class="message-time">{formatTime(message.timestamp)}</span>
           {#if !isStreaming && !isPlaceholder}
-            <button class="copy-btn" onclick={handleCopy} title="复制内容">
+            <button class="copy-btn" onclick={handleCopy} title={i18n.t('messageItem.copyTitle')}>
               <Icon name="copy" size={12} />
             </button>
           {/if}
@@ -342,11 +343,11 @@
     onclick={closeImagePreview}
     onkeydown={(e) => e.key === 'Escape' && closeImagePreview()}
     type="button"
-    aria-label="关闭图片预览"
+    aria-label={i18n.t('messageItem.imagePreviewClose')}
   >
     <div class="image-preview-content" role="document">
       <span class="image-preview-close" aria-hidden="true">×</span>
-      <img src={previewImageUrl} alt="图片预览" class="image-preview-img" />
+      <img src={previewImageUrl} alt={i18n.t('messageItem.imagePreviewAlt')} class="image-preview-img" />
     </div>
   </button>
 {/if}

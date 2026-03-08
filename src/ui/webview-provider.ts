@@ -8,6 +8,8 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { t, setLocale as setExtensionLocale, type LocaleCode } from '../i18n';
+import { ConfigManager } from '../config';
 import {
   UIState,
   WebviewToExtensionMessage,
@@ -213,6 +215,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
   private startupRecoveryPromise: Promise<void> | null = null;
   private runtimeInitializationPromise: Promise<void>;
   private runtimeInitializationError: string | null = null;
+  private locale: LocaleCode;
 
   // CommandHandler 委派
   private readonly commandHandlers: CommandHandler[];
@@ -227,12 +230,14 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       .filter(folder => folder && folder.path)
       .map(folder => ({ name: folder.name, path: folder.path }));
     if (normalizedFolders.length === 0) {
-      throw new Error('未检测到可用工作区目录');
+      throw new Error(t('provider.errors.noWorkspaceDetected'));
     }
 
     this.workspaceFolders = normalizedFolders;
     this.workspaceRoots = new WorkspaceRoots(normalizedFolders);
     this.workspaceRoot = this.workspaceRoots.getPrimaryFolder().path;
+    this.locale = this.normalizeLocaleCode(ConfigManager.getInstance().get('locale'), 'zh-CN');
+    setExtensionLocale(this.locale);
     this.messageFlowLogPath = path.join(this.workspaceRoot, '.magi', 'logs', 'message-flow.jsonl');
     this.webviewMessageBus = new WebviewMessageBus(
       () => this._view,
@@ -688,7 +693,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         }, LogCategory.SESSION);
 
         if (addedAdrs > 0) {
-          this.sendToast(`自动提取了 ${addedAdrs} 条架构决策记录`, 'success');
+          this.sendToast(t('toast.extractedAdrs', { count: addedAdrs }), 'success');
           changed = true;
         }
       }
@@ -709,7 +714,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         }, LogCategory.SESSION);
 
         if (addedFaqs > 0) {
-          this.sendToast(`自动提取了 ${addedFaqs} 条常见问题`, 'success');
+          this.sendToast(t('toast.extractedFaqs', { count: addedFaqs }), 'success');
           changed = true;
         }
       }
@@ -730,7 +735,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
             count: addedLearnings,
             sessionId,
           }, LogCategory.SESSION);
-          this.sendToast(`自动沉淀了 ${addedLearnings} 条经验记录`, 'success');
+          this.sendToast(t('toast.extractedLearnings', { count: addedLearnings }), 'success');
           changed = true;
         }
       }
@@ -799,7 +804,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         userMessageId: userMessage.id,
         placeholderMessageId: placeholderMessage.id,
       }, LogCategory.UI);
-      throw new Error('消息发送失败：用户消息或占位消息未成功发送');
+      throw new Error(t('provider.errors.messagePlaceholderSendFailed'));
     }
 
     // 注册 messageId → requestId 映射，供 StreamUpdate 超时清除使用
@@ -868,22 +873,22 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
           const orchestrator = this.orchestratorEngine.getMissionOrchestrator();
           if (orchestrator) {
             await orchestrator.approveTodo(todoId);
-            this.sendToast('任务已批准', 'success');
+            this.sendToast(t('toast.taskApproved'), 'success');
           }
         } catch (error) {
           logger.error('界面.交互.审批_失败', error, LogCategory.UI);
-          this.sendToast('审批操作失败', 'error');
+          this.sendToast(t('toast.approvalFailed'), 'error');
         }
       } else {
         // 拒绝逻辑
-        this.sendToast('任务已拒绝', 'info');
+        this.sendToast(t('toast.taskRejected'), 'info');
 
         // 【新增】记录被拒绝的方案到 Memory
         const contextManager = this.orchestratorEngine.getContextManager();
         if (contextManager) {
           contextManager.addRejectedApproach(
-            '任务审批被用户拒绝',
-            '用户选择不执行此任务',
+            t('provider.approvalRejectedReason'),
+            t('provider.approvalRejectedDetail'),
             'user'
           );
         }
@@ -967,10 +972,10 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
             if (subTask.status !== 'completed' && subTask.status !== 'failed' && subTask.status !== 'skipped') {
               this.messageHub.subTaskCard({
                 id: subTask.assignmentId || subTask.id, // 优先使用 assignmentId 以匹配 Mission 体系
-                title: subTask.title || subTask.description || '子任务',
+                title: subTask.title || subTask.description || t('provider.subTaskFallbackTitle'),
                 status: 'stopped',
                 worker: subTask.assignedWorker,
-                summary: '用户终止',
+                summary: t('provider.userAborted'),
               });
             }
           }
@@ -983,7 +988,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     // 发送 task_failed 控制消息，确保前端 clearProcessingState() 被触发
     // 前端只响应 task_completed/task_failed 来清除处理态，processingStateChanged(false) 会被忽略
     this.messageHub.sendControl(ControlMessageType.TASK_FAILED, {
-      error: '用户取消',
+      error: t('provider.userCancelled'),
       cancelled: true,
       timestamp: Date.now(),
     });
@@ -998,11 +1003,11 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       }
 
       // 4. 通知 UI
-      this.sendToast('任务已打断', 'info');
+      this.sendToast(t('toast.taskInterrupted'), 'info');
 
 
       this.sendOrchestratorMessage({
-        content: '任务已打断，可在变更中查看已修改的文件，或选择继续执行。',
+        content: t('provider.taskInterruptedHint'),
         messageType: 'text',
         metadata: { phase: 'interrupted' },
       });
@@ -1141,7 +1146,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         if (message.type === 'executeTask' && message.requestId) {
           this.messageHub.taskRejected(message.requestId, errorMsg);
         }
-        this.sendToast(`系统初始化失败：${errorMsg}`, 'error');
+        this.sendToast(t('toast.initFailed', { error: errorMsg }), 'error');
         return;
       }
     }
@@ -1202,14 +1207,14 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         const requestedMode = requestedModeRaw === 'ask' || requestedModeRaw === 'auto' ? requestedModeRaw : undefined;
         if (typeof requestedModeRaw === 'string' && !requestedMode) {
           logger.warn('界面.任务.执行.模式_非法', { requestedModeRaw, requestId: execRequestId }, LogCategory.UI);
-          this.sendToast('收到非法交互模式参数，已按当前模式执行', 'warning');
+          this.sendToast(t('toast.invalidInteractionMode'), 'warning');
         }
         if (!this.shouldProcessRequest(execRequestId)) {
           if (execRequestId) {
-            this.messageHub.taskRejected(execRequestId, '请求重复，已忽略');
+            this.messageHub.taskRejected(execRequestId, t('provider.duplicateRequestIgnored'));
             const traceId = this.messageHub.getTraceId();
             const errorMessage = createErrorMessage(
-              '请求重复，已忽略',
+              t('provider.duplicateRequestIgnored'),
               'orchestrator',
               'orchestrator',
               traceId,
@@ -1250,7 +1255,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       case 'pauseTask':
 
         logger.info('界面.任务.暂停.消息', { taskId: message.taskId }, LogCategory.UI);
-        this.sendToast('暂停功能开发中', 'info');
+        this.sendToast(t('toast.pauseInDev'), 'info');
         break;
 
       case 'resumeTask':
@@ -1269,13 +1274,13 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         // 批准单个变更
         this.snapshotManager.acceptChange(message.filePath);
         globalEventBus.emitEvent('change:approved', { data: { filePath: message.filePath } });
-        this.sendToast('变更已批准', 'success');
+        this.sendToast(t('toast.changeApproved'), 'success');
         this.sendStateUpdate();
         break;
 
       case 'revertChange':
         this.snapshotManager.revertToSnapshot(message.filePath);
-        this.sendToast('变更已还原', 'info');
+        this.sendToast(t('toast.changeReverted'), 'info');
         this.sendStateUpdate();
         break;
 
@@ -1286,7 +1291,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
           for (const change of allChanges) {
             this.snapshotManager.acceptChange(change.filePath);
           }
-          this.sendToast(`已批准 ${allChanges.length} 个变更`, 'success');
+          this.sendToast(t('toast.changesApproved', { count: allChanges.length }), 'success');
         }
         this.sendStateUpdate();
         break;
@@ -1298,7 +1303,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
           for (const change of changes) {
             this.snapshotManager.revertToSnapshot(change.filePath);
           }
-          this.sendToast(`已还原 ${changes.length} 个变更`, 'info');
+          this.sendToast(t('toast.changesReverted', { count: changes.length }), 'info');
         }
         this.sendStateUpdate();
         break;
@@ -1308,14 +1313,14 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         {
           const targetMissionId = message.missionId;
           if (!targetMissionId) {
-            this.sendToast('缺少 missionId', 'warning');
+            this.sendToast(t('toast.missingMissionId'), 'warning');
             break;
           }
           const result = this.snapshotManager.revertMission(targetMissionId);
           if (result.reverted > 0) {
-            this.sendToast(`已撤销本轮 ${result.reverted} 个文件变更`, 'info');
+            this.sendToast(t('toast.roundReverted', { count: result.reverted }), 'info');
           } else {
-            this.sendToast('没有可撤销的变更', 'info');
+            this.sendToast(t('toast.noChangesToRevert'), 'info');
           }
         }
         this.sendStateUpdate();
@@ -1331,7 +1336,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         {
           const targetPath = this.resolveOpenFilePath(message);
           if (!targetPath) {
-            this.sendToast('打开文件失败: 缺少文件路径', 'warning');
+            this.sendToast(t('toast.openFileMissingPath'), 'warning');
             break;
           }
           await this.openFileInEditor(targetPath);
@@ -1382,7 +1387,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         // 重命名会话
         if (this.sessionManager.renameSession(message.sessionId, message.name)) {
           this.sendData('sessionsUpdated', { sessions: this.sessionManager.getSessionMetas() });
-          this.sendToast('会话已重命名', 'success');
+          this.sendToast(t('toast.sessionRenamed'), 'success');
         }
         break;
 
@@ -1396,12 +1401,13 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         const needConfirm = message.requireConfirm;
 
         if (needConfirm) {
+          const confirmButton = t('toast.deleteSessionConfirmButton');
           vscode.window.showWarningMessage(
-            '确定要删除这个会话吗？此操作不可撤销。',
+            t('toast.deleteSessionConfirm'),
             { modal: true },
-            '确定删除'
+            confirmButton
           ).then((selection) => {
-            if (selection === '确定删除') {
+            if (selection === confirmButton) {
               void this.performSessionDelete(sessionIdToDelete);
             }
           });
@@ -1424,7 +1430,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 
       case 'updateSetting':
         // 更新设置
-        this.handleSettingUpdate(message.key, message.value);
+        void this.handleSettingUpdate(message.key, message.value);
         break;
 
       case 'setInteractionMode':
@@ -1603,7 +1609,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       logger.info('Mermaid.新标签页.已打开', { title }, LogCategory.UI);
     } catch (error: any) {
       logger.error('Mermaid.新标签页.失败', { error: error.message }, LogCategory.UI);
-      this.sendToast(`打开图表失败: ${error.message}`, 'error');
+      this.sendToast(t('toast.openChartFailed', { error: error.message }), 'error');
     }
   }
 
@@ -1701,14 +1707,14 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     this.orchestratorEngine.resetOrchestratorTokenUsage();
     this.adapterFactory.resetAllTokenUsage();
     this.sendExecutionStats();
-    this.sendToast('执行统计已重置', 'info');
+    this.sendToast(t('toast.statsReset'), 'info');
   }
 
   /** 处理设置交互模式 */
   private handleSetInteractionMode(mode: import('../types').InteractionMode): void {
     if (mode !== 'ask' && mode !== 'auto') {
       logger.error('界面.交互_模式.非法值', { mode }, LogCategory.UI);
-      this.sendToast('交互模式无效，已忽略本次切换请求', 'error');
+      this.sendToast(t('toast.invalidMode'), 'error');
       return;
     }
 
@@ -1719,7 +1725,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       logger.info('界面.交互_模式.变更', { mode }, LogCategory.UI);
       this.orchestratorEngine.setInteractionMode(mode);
       this.interactionModeUpdatedAt = Date.now();
-      this.sendToast(`已切换到 ${this.getModeDisplayName(mode)} 模式`, 'info');
+      this.sendToast(t('toast.modeSwitched', { mode: this.getModeDisplayName(mode) }), 'info');
     } else {
       logger.info('界面.交互_模式.保持', { mode }, LogCategory.UI);
       if (!this.interactionModeUpdatedAt) {
@@ -1736,8 +1742,8 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
   /** 获取模式显示名称 */
   private getModeDisplayName(mode: import('../types').InteractionMode): string {
     switch (mode) {
-      case 'ask': return '对话';
-      case 'auto': return '自动';
+      case 'ask': return t('provider.modeAsk');
+      case 'auto': return t('provider.modeAuto');
       default: return mode;
     }
   }
@@ -1769,11 +1775,11 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         revertedCount = result.reverted;
       }
       const message = revertedCount > 0
-        ? `已回滚本轮 ${revertedCount} 个变更`
-        : '没有可回滚的变更';
+        ? t('toast.roundRollback', { count: revertedCount })
+        : t('toast.noChangesToRollback');
       this.sendToast(message, 'info');
       this.sendOrchestratorMessage({
-        content: `回滚完成：${message}`,
+        content: t('toast.rollbackComplete', { message }),
         messageType: 'result',
         metadata: { phase: 'recovery' },
       });
@@ -1783,22 +1789,22 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     if (decision === 'retry') {
       if (this.orchestratorEngine.running) {
         this.pendingRecoveryRetry = true;
-        this.pendingRecoveryPrompt = '请继续完成之前失败的任务';
+        this.pendingRecoveryPrompt = t('provider.resumePrompt.defaultRetry');
         logger.warn('界面.编排器.恢复.重试_延迟_引擎运行中', undefined, LogCategory.UI);
-        this.sendToast('当前任务仍在运行，已排队重试', 'info');
+        this.sendToast(t('toast.taskStillRunning'), 'info');
         return;
       }
-      await this.resumeInterruptedTask('请继续完成之前失败的任务');
+      await this.resumeInterruptedTask(t('provider.resumePrompt.defaultRetry'));
       return;
     }
 
-    this.sendToast('已选择继续执行，未进行回滚', 'info');
+    this.sendToast(t('toast.continueWithoutRollback'), 'info');
   }
 
   private async tryResumePendingRecovery(): Promise<void> {
     if (!this.pendingRecoveryRetry) return;
     if (this.orchestratorEngine.running) return;
-    const prompt = this.pendingRecoveryPrompt || '请继续完成之前失败的任务';
+    const prompt = this.pendingRecoveryPrompt || t('provider.resumePrompt.defaultRetry');
     this.pendingRecoveryRetry = false;
     this.pendingRecoveryPrompt = null;
     logger.info('界面.编排器.恢复.重试_触发', undefined, LogCategory.UI);
@@ -1864,7 +1870,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
   private async openVscodeDiff(filePath: string): Promise<void> {
     const session = this.sessionManager.getCurrentSession();
     if (!session) {
-      this.sendToast('没有活动会话', 'warning');
+      this.sendToast(t('toast.noActiveSession'), 'warning');
       return;
     }
 
@@ -1874,7 +1880,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 
     const snapshot = this.sessionManager.getSnapshot(session.id, relativePath);
     if (!snapshot) {
-      this.sendToast('未找到该文件的快照', 'warning');
+      this.sendToast(t('toast.snapshotNotFound'), 'warning');
       return;
     }
 
@@ -1902,7 +1908,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       const modifiedUri = vscode.Uri.file(path.join(this.workspaceRoot, relativePath));
 
       // 使用 VS Code 原生 diff 命令打开
-      const title = `${fileName} (原始 ↔ 修改后)`;
+      const title = t('provider.diffTitle', { fileName });
       await vscode.commands.executeCommand('vscode.diff', originalUri, modifiedUri, title);
 
       // 监听 diff 标签页关闭后再清理临时文件
@@ -1921,7 +1927,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 
     } catch (error) {
       logger.error('界面.差异.打开_失败', error, LogCategory.UI);
-      this.sendToast('打开 diff 视图失败', 'error');
+      this.sendToast(t('toast.diffViewFailed'), 'error');
     }
   }
 
@@ -1938,7 +1944,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 
       // 检查文件是否存在
       if (!fs.existsSync(absolutePath)) {
-        this.sendToast(`文件不存在: ${filepath}`, 'warning');
+        this.sendToast(t('toast.fileNotExists', { filepath }), 'warning');
         return;
       }
 
@@ -1957,7 +1963,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       });
     } catch (error) {
       logger.error('界面.文件.打开_失败', error, LogCategory.UI);
-      this.sendToast(`打开文件失败: ${filepath}`, 'error');
+      this.sendToast(t('toast.openFileFailed', { filepath }), 'error');
     }
   }
 
@@ -1975,13 +1981,13 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
   private async handleClearAllTasks(): Promise<void> {
     const sessionId = this.activeSessionId;
     if (!sessionId) {
-      this.sendToast('没有活动会话', 'warning');
+      this.sendToast(t('toast.noActiveSession'), 'warning');
       return;
     }
 
     // 检查是否有正在运行的任务
     if (this.orchestratorEngine.running) {
-      this.sendToast('有任务正在执行，无法清理', 'warning');
+      this.sendToast(t('toast.taskRunning'), 'warning');
       return;
     }
 
@@ -1996,42 +2002,42 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       }
     }
 
-    this.sendToast(`已清理 ${taskCount} 个任务`, 'success');
+    this.sendToast(t('toast.tasksCleaned', { count: taskCount }), 'success');
     this.sendStateUpdate();
   }
 
   private async handleStartTask(taskId?: string): Promise<void> {
     if (!taskId) {
-      this.sendToast('缺少任务 ID', 'error');
+      this.sendToast(t('toast.missingTaskId'), 'error');
       return;
     }
     try {
       // 先通知用户任务正在启动
-      this.sendToast('任务启动中...', 'info');
+      this.sendToast(t('toast.taskStarting'), 'info');
       this.sendStateUpdate();
       // 触发完整执行链路（意图分析 → 规划 → 执行）
       await this.orchestratorEngine.startTaskById(taskId);
       this.sendStateUpdate();
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      this.sendToast(`启动失败: ${errorMsg}`, 'error');
+      this.sendToast(t('toast.startFailed', { error: errorMsg }), 'error');
       this.sendStateUpdate();
     }
   }
 
   private async handleDeleteTask(taskId?: string): Promise<void> {
     if (!taskId) {
-      this.sendToast('缺少任务 ID', 'error');
+      this.sendToast(t('toast.missingTaskId'), 'error');
       return;
     }
     try {
       // 统一 Todo 系统 - 使用 orchestratorEngine
       await this.orchestratorEngine.deleteTaskById(taskId);
-      this.sendToast('任务已删除', 'success');
+      this.sendToast(t('toast.taskDeleted'), 'success');
       this.sendStateUpdate();
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      this.sendToast(`删除失败: ${errorMsg}`, 'error');
+      this.sendToast(t('toast.deleteFailed', { error: errorMsg }), 'error');
     }
   }
 
@@ -2049,14 +2055,16 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     const pendingChanges = this.snapshotManager.getPendingChanges();
     const changeList = pendingChanges.length
       ? pendingChanges.map(c => `- ${c.filePath} (+${c.additions}/-${c.deletions})`).join('\n')
-      : '无';
+      : t('provider.resumePrompt.pendingChangesNone');
 
-    const extra = extraInstruction ? `\n\n补充指令:\n${extraInstruction}` : '';
+    const extra = extraInstruction
+      ? `\n\n${t('provider.resumePrompt.extraInstruction', { instruction: extraInstruction })}`
+      : '';
 
     return [
-      '请继续完成上一次被打断的任务。',
-      `原始需求:\n${originalPrompt}`,
-      `已产生的变更:\n${changeList}` + extra,
+      t('provider.resumePrompt.header'),
+      t('provider.resumePrompt.originalRequest', { prompt: originalPrompt }),
+      t('provider.resumePrompt.generatedChanges', { changes: changeList }) + extra,
     ].join('\n\n');
   }
 
@@ -2064,7 +2072,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
    * 构建中断摘要（写回会话，供下一轮上下文注入）
    */
   private buildInterruptionSummary(tasks: TaskView[]): string {
-    const lines: string[] = ['上轮任务被用户中断。'];
+    const lines: string[] = [t('provider.interruptionSummary.header')];
 
     for (const task of tasks) {
       const subTasks = task.subTasks || [];
@@ -2073,43 +2081,43 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       const running = subTasks.filter(st => st.status === 'running').length;
       const pending = subTasks.filter(st => st.status === 'pending' || st.status === 'blocked').length;
       const taskName = task.goal || task.prompt || task.id;
-      lines.push(`- 任务：${taskName}`);
-      lines.push(`  子任务状态：完成 ${completed}，失败 ${failed}，执行中 ${running}，待处理 ${pending}`);
+      lines.push(t('provider.interruptionSummary.taskLine', { taskName }));
+      lines.push(t('provider.interruptionSummary.subTaskStatus', { completed, failed, running, pending }));
     }
 
     const pendingChanges = this.snapshotManager.getPendingChanges();
     if (pendingChanges.length > 0) {
-      lines.push('- 未确认代码变更：');
+      lines.push(t('provider.interruptionSummary.pendingChangesHeader'));
       for (const change of pendingChanges.slice(0, 20)) {
         lines.push(`  - ${change.filePath} (+${change.additions}/-${change.deletions})`);
       }
       if (pendingChanges.length > 20) {
-        lines.push(`  - ... 其余 ${pendingChanges.length - 20} 个变更`);
+        lines.push(t('provider.interruptionSummary.pendingChangesMore', { count: pendingChanges.length - 20 }));
       }
     } else {
-      lines.push('- 未确认代码变更：无');
+      lines.push(t('provider.interruptionSummary.pendingChangesNone'));
     }
 
-    lines.push('请基于以上进展继续执行，避免重复已完成工作。');
+    lines.push(t('provider.interruptionSummary.footer'));
     return lines.join('\n');
   }
 
   /** 恢复被打断的任务 */
   private async resumeInterruptedTask(extraInstruction?: string): Promise<void> {
     if (this.orchestratorEngine.running) {
-      this.sendToast('当前仍有任务在执行', 'warning');
+      this.sendToast(t('toast.taskStillExecuting'), 'warning');
       return;
     }
 
     const lastTask = await this.getLastInterruptedTask();
     if (!lastTask) {
-      this.sendToast('没有可恢复的任务', 'info');
+      this.sendToast(t('toast.noRecoverableTasks'), 'info');
       return;
     }
 
     const prompt = this.buildResumePrompt(lastTask.prompt, extraInstruction);
     this.sendOrchestratorMessage({
-      content: '正在恢复上一次任务...',
+      content: t('provider.resumingTask'),
       messageType: 'progress',
       metadata: { phase: 'resuming' },
     });
@@ -2125,7 +2133,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 
     const trimmedContent = content.trim();
     if (!trimmedContent) {
-      this.sendToast('补充内容不能为空', 'warning');
+      this.sendToast(t('toast.supplementEmpty'), 'warning');
       return;
     }
 
@@ -2145,11 +2153,11 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         // 2. 注入补充指令队列，在下一决策点生效
         const accepted = this.orchestratorEngine.injectSupplementaryInstruction(trimmedContent);
         if (!accepted) {
-          this.sendToast('当前任务不可注入补充指令，请重试', 'warning');
+          this.sendToast(t('toast.supplementNotReady'), 'warning');
           return;
         }
         const pendingCount = this.orchestratorEngine.getPendingInstructionCount();
-        this.messageHub.systemNotice('收到补充指令，将在下一决策点生效。', {
+        this.messageHub.systemNotice(t('provider.supplementaryInstruction'), {
           phase: 'supplementary_instruction',
           isStatusMessage: true,
           extra: {
@@ -2166,16 +2174,24 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       logger.info('界面.消息.补充.空闲直执_成功', { taskId, wasRunning }, LogCategory.UI);
     } catch (error) {
       logger.error('界面.消息.补充.失败', error, LogCategory.UI);
-      this.sendToast('补充内容失败', 'error');
+      this.sendToast(t('toast.supplementFailed'), 'error');
     }
   }
 
   /** 处理设置更新 */
-  private handleSettingUpdate(key: string, value: unknown): void {
+  private async handleSettingUpdate(key: string, value: unknown): Promise<void> {
     const config = vscode.workspace.getConfiguration('magi');
 
+    if (key === 'locale') {
+      const locale = this.normalizeLocaleCode(value);
+      this.locale = locale;
+      setExtensionLocale(locale);
+      ConfigManager.getInstance().set('locale', locale);
+      ConfigManager.getInstance().save();
+      return; // 语言切换即时生效，不显示通用“设置已保存”提示
+    }
     // 处理其他配置
-    if (key === 'autoSnapshot') {
+    else if (key === 'autoSnapshot') {
       config.update('autoSnapshot', value, vscode.ConfigurationTarget.Global);
     }
     else if (key === 'timeout') {
@@ -2190,7 +2206,14 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       return; // deepTask 切换不需要通用 toast（前端已有 toast）
     }
 
-    this.sendToast('设置已保存', 'success');
+    this.sendToast(t('toast.settingsSaved'), 'success');
+  }
+
+  private normalizeLocaleCode(value: unknown, fallback: LocaleCode = this.locale): LocaleCode {
+    if (value === 'zh-CN' || value === 'en-US') {
+      return value;
+    }
+    return fallback;
   }
 
   /** 执行任务（统一走智能编排） */
@@ -2255,8 +2278,8 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 
       if (lengthToValidate > maxPromptLength) {
         const displayLength = isSkillInvocation ? displayPrompt.length : prompt.length;
-        this.sendToast(`输入内容过长（${displayLength} 字符），请控制在 ${maxPromptLength} 字符以内`, 'warning');
-        rejectRequest(`输入内容过长（${displayLength} 字符）`);
+        this.sendToast(t('input.inputTooLong', { length: displayLength, max: maxPromptLength }), 'warning');
+        rejectRequest(t('provider.inputTooLong', { length: displayLength }));
         return;
       }
 
@@ -2267,7 +2290,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       }
       const executionSessionId = this.activeSessionId || this.sessionManager.getCurrentSession()?.id || '';
       if (!executionSessionId) {
-        rejectRequest('未找到有效会话，请重试');
+        rejectRequest(t('provider.sessionNotFound'));
         return;
       }
       this.activeSessionId = executionSessionId;
@@ -2336,7 +2359,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
           },
         });
       } catch (error: any) {
-        rejectRequest(`会话写入失败: ${error?.message || String(error)}`);
+        rejectRequest(t('provider.sessionWriteFailed', { error: error?.message || String(error) }));
         return;
       }
       void this.orchestratorEngine.recordContextMessage('user', prompt, executionSessionId);
@@ -2396,7 +2419,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       if (started) {
         // 判断是否为中断导致的失败——中断场景不应发送错误消息
         const isAbort = !success && failureReason && isAbortError(failureReason);
-        const normalizedFailureReason = (failureReason || '执行失败').trim();
+        const normalizedFailureReason = (failureReason || t('provider.executionFailed')).trim();
         const modelOriginIssue = this.isLikelyModelOriginIssue(normalizedFailureReason);
         const userFacingFailureReason = modelOriginIssue
           ? this.buildModelOriginIssueMessage(normalizedFailureReason)
@@ -2410,7 +2433,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
           // 中断场景：仅发送 TASK_FAILED 控制消息用于状态流转，不发送用户可见的错误消息
           this.messageHub.sendControl(ControlMessageType.TASK_FAILED, {
             requestId: requestKey,
-            error: '任务已中断',
+            error: t('provider.taskAborted'),
             timestamp: Date.now(),
           });
         } else {
@@ -2428,7 +2451,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
                 requestId: requestKey,
                 reason: normalizedFailureReason,
               }, LogCategory.UI);
-              this.messageHub.notify('检测到模型调用异常，已按模型故障链路处理并保留已完成内容。', 'warning');
+              this.messageHub.notify(t('provider.modelAnomalyDetected'), 'warning');
               this.messageHub.orchestratorMessage(userFacingFailureReason, {
                 metadata: {
                   requestId: requestKey,
@@ -2482,7 +2505,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 
   private buildModelOriginIssueMessage(rawReason: string): string {
     const userMessage = toModelOriginUserMessage(rawReason).trim();
-    return userMessage || '模型本轮输出偏离执行链路，已自动结束本轮。请重试。';
+    return userMessage || t('provider.modelOriginFallback');
   }
 
   private resolveInstructionSkillPrompt(prompt: string): { prompt: string; skillName?: string } {
@@ -2604,7 +2627,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     }
 
     this.sendData('sessionsUpdated', { sessions: this.sessionManager.getSessionMetas() });
-    this.sendToast('会话已删除', 'info');
+    this.sendToast(t('toast.sessionDeleted'), 'info');
     this.sendStateUpdate();
   }
 
@@ -2632,7 +2655,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
   private async handleNewSession(): Promise<void> {
     // 创建新会话前，先中断当前任务
     await this.interruptCurrentTask({ silent: true });
-    this.cancelPendingOrchestratorQueue('会话已切换，已取消旧会话排队任务');
+    this.cancelPendingOrchestratorQueue(t('provider.sessionSwitchedQueueCancelled'));
     // 创建新会话时，重置所有适配器
     await this.adapterFactory.shutdown();
     this.messageHub.setRequestContext(undefined);
@@ -2650,7 +2673,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 
   /** 切换到指定会话 */
   private async switchToSession(sessionId: string): Promise<void> {
-    this.cancelPendingOrchestratorQueue('会话已切换，已取消旧会话排队任务');
+    this.cancelPendingOrchestratorQueue(t('provider.sessionSwitchedQueueCancelled'));
     await this.adapterFactory.shutdown();
     this.messageHub.setRequestContext(undefined);
     this.messageHub.forceProcessingState(false);
@@ -2841,10 +2864,10 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     const sessionMessages: SessionMessage[] = incomingMessages.map((m) => {
       const id = typeof m?.id === 'string' && m.id.trim() ? m.id.trim() : '';
       if (!id) {
-        throw new Error('[WebviewProvider] Session message 缺少 id');
+        throw new Error(t('provider.errors.sessionMessageMissingId'));
       }
       if (seen.has(id)) {
-        throw new Error(`[WebviewProvider] Session message id 重复: ${id}`);
+        throw new Error(t('provider.errors.sessionMessageDuplicateId', { id }));
       }
       seen.add(id);
 
@@ -2854,10 +2877,10 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       }
 
       if (typeof m?.content !== 'string') {
-        throw new Error('[WebviewProvider] Session message content 非字符串');
+        throw new Error(t('provider.errors.sessionMessageContentNotString'));
       }
       if (typeof m?.timestamp !== 'number') {
-        throw new Error('[WebviewProvider] Session message timestamp 无效');
+        throw new Error(t('provider.errors.sessionMessageInvalidTimestamp'));
       }
       const normalizedSource = this.normalizeSessionMessageSource(m.source, m.agent, m.metadata);
       return {
@@ -2905,7 +2928,10 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     }
 
     throw new Error(
-      `[WebviewProvider] Session message role/type 无效: role=${String(role)}, type=${String(message?.type)}`
+      t('provider.errors.sessionMessageInvalidRoleType', {
+        role: String(role),
+        type: String(message?.type),
+      })
     );
   }
 
@@ -2914,7 +2940,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       return undefined;
     }
     if (!Array.isArray(rawBlocks)) {
-      throw new Error('[WebviewProvider] Session message blocks 非数组');
+      throw new Error(t('provider.errors.sessionMessageBlocksNotArray'));
     }
     if (rawBlocks.length === 0) {
       return undefined;
@@ -2924,12 +2950,12 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
 
   private normalizeSessionBlock(rawBlock: unknown, index: number): ContentBlock {
     if (!rawBlock || typeof rawBlock !== 'object' || Array.isArray(rawBlock)) {
-      throw new Error(`[WebviewProvider] Session block 无效: index=${index}`);
+      throw new Error(t('provider.errors.sessionBlockInvalid', { index }));
     }
     const block = rawBlock as Record<string, unknown>;
     const blockType = block.type;
     if (typeof blockType !== 'string' || blockType.length === 0) {
-      throw new Error(`[WebviewProvider] Session block 缺少 type: index=${index}`);
+      throw new Error(t('provider.errors.sessionBlockMissingType', { index }));
     }
 
     switch (blockType) {
@@ -2966,13 +2992,13 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       case 'tool_call': {
         const toolCallRaw = block.toolCall;
         if (!toolCallRaw || typeof toolCallRaw !== 'object' || Array.isArray(toolCallRaw)) {
-          throw new Error(`[WebviewProvider] tool_call 缺少 toolCall 对象: index=${index}`);
+          throw new Error(t('provider.errors.toolCallMissingObject', { index }));
         }
         const toolCall = toolCallRaw as Record<string, unknown>;
         const toolId = typeof toolCall.id === 'string' ? toolCall.id.trim() : '';
         const toolName = typeof toolCall.name === 'string' ? toolCall.name.trim() : '';
         if (!toolId || !toolName) {
-          throw new Error(`[WebviewProvider] tool_call 缺少 id/name: index=${index}`);
+          throw new Error(t('provider.errors.toolCallMissingIdOrName', { index }));
         }
         const standardized = this.normalizeStandardizedToolResult(toolCall.standardized, index);
         return {
@@ -2989,16 +3015,16 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       case 'file_change': {
         const fileChangeRaw = block.fileChange;
         if (!fileChangeRaw || typeof fileChangeRaw !== 'object' || Array.isArray(fileChangeRaw)) {
-          throw new Error(`[WebviewProvider] file_change 缺少 fileChange 对象: index=${index}`);
+          throw new Error(t('provider.errors.fileChangeMissingObject', { index }));
         }
         const fileChange = fileChangeRaw as Record<string, unknown>;
         const filePath = typeof fileChange.filePath === 'string' ? fileChange.filePath : '';
         const changeType = fileChange.changeType;
         if (typeof filePath !== 'string' || filePath.trim().length === 0) {
-          throw new Error(`[WebviewProvider] file_change 缺少 filePath: index=${index}`);
+          throw new Error(t('provider.errors.fileChangeMissingPath', { index }));
         }
         if (changeType !== 'create' && changeType !== 'modify' && changeType !== 'delete') {
-          throw new Error(`[WebviewProvider] file_change changeType 无效: index=${index}`);
+          throw new Error(t('provider.errors.fileChangeInvalidType', { index }));
         }
         return {
           type: 'file_change',
@@ -3012,12 +3038,12 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       case 'plan': {
         const planRaw = block.plan;
         if (!planRaw || typeof planRaw !== 'object' || Array.isArray(planRaw)) {
-          throw new Error(`[WebviewProvider] plan 缺少 plan 对象: index=${index}`);
+          throw new Error(t('provider.errors.planMissingObject', { index }));
         }
         const plan = planRaw as Record<string, unknown>;
         const goal = typeof plan.goal === 'string' ? plan.goal : '';
         if (goal.trim().length === 0) {
-          throw new Error(`[WebviewProvider] plan 缺少 goal: index=${index}`);
+          throw new Error(t('provider.errors.planMissingGoal', { index }));
         }
         return {
           type: 'plan',
@@ -3033,7 +3059,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
         };
       }
       default:
-        throw new Error(`[WebviewProvider] Session block type 不支持: ${blockType}`);
+        throw new Error(t('provider.errors.sessionBlockUnsupportedType', { blockType }));
     }
   }
 
@@ -3047,7 +3073,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     if (status === 'error') {
       return 'failed';
     }
-    throw new Error(`[WebviewProvider] tool_call status 无效: index=${index}`);
+    throw new Error(t('provider.errors.toolCallInvalidStatus', { index }));
   }
 
   private serializeToolArguments(argumentsValue: unknown, index: number): string | undefined {
@@ -3057,7 +3083,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     try {
       return JSON.stringify(argumentsValue);
     } catch {
-      throw new Error(`[WebviewProvider] tool_call arguments 无法序列化: index=${index}`);
+      throw new Error(t('provider.errors.toolCallArgumentsNotSerializable', { index }));
     }
   }
 
@@ -3074,23 +3100,23 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       return undefined;
     }
     if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      throw new Error(`[WebviewProvider] standardized 非法: index=${index}`);
+      throw new Error(t('provider.errors.standardizedInvalid', { index }));
     }
     const payload = value as Record<string, unknown>;
     if (payload.schemaVersion !== 'tool-result.v1') {
-      throw new Error(`[WebviewProvider] standardized schemaVersion 无效: index=${index}`);
+      throw new Error(t('provider.errors.standardizedInvalidSchemaVersion', { index }));
     }
     const source = payload.source;
     if (source !== 'builtin' && source !== 'mcp' && source !== 'skill') {
-      throw new Error(`[WebviewProvider] standardized source 无效: index=${index}`);
+      throw new Error(t('provider.errors.standardizedInvalidSource', { index }));
     }
     const toolName = payload.toolName;
     if (typeof toolName !== 'string' || toolName.trim().length === 0) {
-      throw new Error(`[WebviewProvider] standardized toolName 无效: index=${index}`);
+      throw new Error(t('provider.errors.standardizedInvalidToolName', { index }));
     }
     const toolCallId = payload.toolCallId;
     if (typeof toolCallId !== 'string' || toolCallId.trim().length === 0) {
-      throw new Error(`[WebviewProvider] standardized toolCallId 无效: index=${index}`);
+      throw new Error(t('provider.errors.standardizedInvalidToolCallId', { index }));
     }
     const status = payload.status;
     if (
@@ -3102,11 +3128,11 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       && status !== 'rejected'
       && status !== 'aborted'
     ) {
-      throw new Error(`[WebviewProvider] standardized status 无效: index=${index}`);
+      throw new Error(t('provider.errors.standardizedInvalidStatus', { index }));
     }
     const message = payload.message;
     if (typeof message !== 'string') {
-      throw new Error(`[WebviewProvider] standardized message 无效: index=${index}`);
+      throw new Error(t('provider.errors.standardizedInvalidMessage', { index }));
     }
 
     const normalized: StandardizedToolResultPayload = {
@@ -3262,6 +3288,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
       sessions: sessionMetas,
       currentTask,
       tasks: displayTasks,
+      locale: this.locale,
       workerStatuses,
       pendingChanges,
       isRunning,
@@ -3345,7 +3372,7 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     const templatePath = path.join(this.extensionUri.fsPath, 'dist', 'webview', 'index.html');
 
     if (!fs.existsSync(templatePath)) {
-      const message = `Svelte webview 未构建: ${templatePath}`;
+      const message = t('provider.errors.svelteWebviewNotBuilt', { templatePath });
       logger.error('界面.Svelte.未构建', { path: templatePath }, LogCategory.UI);
       throw new Error(message);
     }
@@ -3370,12 +3397,13 @@ export class WebviewProvider implements vscode.WebviewViewProvider {
     const cspMeta = `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource}; font-src ${webview.cspSource}; img-src ${webview.cspSource} https: data:;">`;
     html = html.replace('<head>', `<head>\n    ${cspMeta}`);
 
-    // 注入初始 sessionId
+    // 注入初始 sessionId 与 locale
     const initialSessionId = this.activeSessionId || '';
-    const sessionScript = `<script>window.__INITIAL_SESSION_ID__ = "${initialSessionId}";</script>`;
-    html = html.replace('</head>', `${sessionScript}\n  </head>`);
+    const initialLocale = this.locale;
+    const bootstrapScript = `<script>window.__INITIAL_SESSION_ID__ = ${JSON.stringify(initialSessionId)}; window.__INITIAL_LOCALE__ = ${JSON.stringify(initialLocale)};</script>`;
+    html = html.replace('</head>', `${bootstrapScript}\n  </head>`);
 
-    logger.debug('界面.Svelte.已加载', { sessionId: initialSessionId }, LogCategory.UI);
+    logger.debug('界面.Svelte.已加载', { sessionId: initialSessionId, locale: initialLocale }, LogCategory.UI);
     return html;
   }
 

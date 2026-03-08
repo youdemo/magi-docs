@@ -5,6 +5,7 @@
   import type { Edit } from '../types/message';
   import Icon from './Icon.svelte';
   import WorkerBadge from './WorkerBadge.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
   const appState = getState();
 
@@ -119,13 +120,13 @@
       </div>
     </div>
     <div class="file-actions">
-      <button class="action-icon" title="打开文件" onclick={(e) => { e.stopPropagation(); openFile(edit.filePath); }}>
+      <button class="action-icon" title={i18n.t('edits.actions.openFile')} onclick={(e) => { e.stopPropagation(); openFile(edit.filePath); }}>
         <Icon name="file-text" size={14} />
       </button>
-      <button class="action-icon approve" title="批准变更" onclick={(e) => { e.stopPropagation(); approveChange(edit.filePath); }}>
+      <button class="action-icon approve" title={i18n.t('edits.actions.approveChange')} onclick={(e) => { e.stopPropagation(); approveChange(edit.filePath); }}>
         <Icon name="check" size={14} />
       </button>
-      <button class="action-icon revert" title="还原变更" onclick={(e) => { e.stopPropagation(); revertChange(edit.filePath); }}>
+      <button class="action-icon revert" title={i18n.t('edits.actions.revertChange')} onclick={(e) => { e.stopPropagation(); revertChange(edit.filePath); }}>
         <Icon name="undo" size={14} />
       </button>
     </div>
@@ -136,17 +137,17 @@
   {#if edits.length === 0}
     <div class="empty-state">
       <Icon name="file-edit" size={32} />
-      <div class="empty-text">暂无变更</div>
-      <div class="empty-hint">Worker 产生的代码变更会在此显示</div>
+      <div class="empty-text">{i18n.t('edits.empty.title')}</div>
+      <div class="empty-hint">{i18n.t('edits.empty.hint')}</div>
     </div>
   {:else}
     <!-- 顶部统计条 -->
     <div class="summary-bar">
       <div class="summary-left">
-        <span class="summary-count">{edits.length} 个文件</span>
-        {#if addedCount > 0}<span class="summary-chip add">{addedCount} 新增</span>{/if}
-        {#if modifiedCount > 0}<span class="summary-chip modify">{modifiedCount} 修改</span>{/if}
-        {#if deletedCount > 0}<span class="summary-chip del">{deletedCount} 删除</span>{/if}
+        <span class="summary-count">{i18n.t('edits.summary.fileCount', { count: edits.length })}</span>
+        {#if addedCount > 0}<span class="summary-chip add">{i18n.t('edits.summary.added', { count: addedCount })}</span>{/if}
+        {#if modifiedCount > 0}<span class="summary-chip modify">{i18n.t('edits.summary.modified', { count: modifiedCount })}</span>{/if}
+        {#if deletedCount > 0}<span class="summary-chip del">{i18n.t('edits.summary.deleted', { count: deletedCount })}</span>{/if}
       </div>
       <div class="summary-right">
         <span class="stat-add">+{totalAdditions}</span>
@@ -156,13 +157,13 @@
 
     <!-- 批量操作 -->
     <div class="bulk-actions">
-      <button class="bulk-btn approve" onclick={approveAllChanges} title="批准所有变更">
+      <button class="bulk-btn approve" onclick={approveAllChanges} title={i18n.t('edits.actions.approveAllTitle')}>
         <Icon name="check-circle" size={13} />
-        <span>全部批准</span>
+        <span>{i18n.t('edits.actions.approveAll')}</span>
       </button>
-      <button class="bulk-btn revert" onclick={revertAllChanges} title="还原所有变更">
+      <button class="bulk-btn revert" onclick={revertAllChanges} title={i18n.t('edits.actions.revertAllTitle')}>
         <Icon name="undo" size={13} />
-        <span>全部还原</span>
+        <span>{i18n.t('edits.actions.revertAll')}</span>
       </button>
     </div>
 
@@ -170,8 +171,8 @@
       <!-- 统一暂存（历史轮次） -->
       <div class="group-section">
         <div class="group-header">
-          <span class="group-label">统一暂存</span>
-          <span class="group-count">{stagedEdits.length} 个文件</span>
+          <span class="group-label">{i18n.t('edits.group.staged')}</span>
+          <span class="group-count">{i18n.t('edits.group.stagedCount', { count: stagedEdits.length })}</span>
         </div>
         <div class="file-list">
           {#each stagedEdits as edit (getEditKey(edit))}
@@ -185,16 +186,16 @@
     <div class="group-section">
       {#if hasGroups || currentRoundEdits.length > 0}
         <div class="group-header current-round">
-          <span class="group-label">本轮变更</span>
-          <span class="group-count">{currentRoundEdits.length} 个文件</span>
+          <span class="group-label">{i18n.t('edits.group.currentRound')}</span>
+          <span class="group-count">{i18n.t('edits.group.currentRoundCount', { count: currentRoundEdits.length })}</span>
           <button
             class="revert-round-btn"
             onclick={revertMission}
             disabled={appState.isProcessing}
-            title={appState.isProcessing ? '任务执行中，无法撤销' : '撤销本轮所有变更'}
+            title={appState.isProcessing ? i18n.t('edits.group.revertRoundTitleDisabled') : i18n.t('edits.group.revertRoundTitle')}
           >
             <Icon name="undo" size={12} />
-            <span>撤销本轮</span>
+            <span>{i18n.t('edits.group.revertRound')}</span>
           </button>
         </div>
         <div class="file-list">

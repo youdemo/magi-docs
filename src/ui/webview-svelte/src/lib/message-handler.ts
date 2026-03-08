@@ -46,6 +46,7 @@ import { MessageType, MessageCategory } from '../../../../protocol/message-proto
 import { routeStandardMessage, getMessageTarget, clearMessageTargets, clearMessageTarget, setMessageTarget } from './message-router';
 import { normalizeWorkerSlot } from './message-classifier';
 import { ensureArray } from './utils';
+import { i18n } from '../stores/i18n.svelte';
 
 function normalizeRestoredMessages(messages: Message[]): Message[] {
   const seen = new Set<string>();
@@ -327,14 +328,14 @@ function resolvePendingInteractionsOnAutoMode(): void {
   clearPendingInteractions();
   clearRequestedInteractionMode();
   setIsProcessing(true);
-  addToast('info', '已切换到自动模式，待处理交互已按自动策略继续');
+  addToast('info', i18n.t('messageHandler.autoModePendingResolved'));
 }
 
 function applyInteractionModeFromPayload(rawMode: unknown, source: string, rawUpdatedAt?: unknown): void {
   const resolved = resolveInteractionMode(rawMode);
   if (!resolved) {
     console.error(`[MessageHandler] ${source} 收到非法 interactionMode:`, rawMode);
-    addToast('error', '收到非法交互模式，已忽略该更新');
+    addToast('error', i18n.t('messageHandler.invalidInteractionMode'));
     return;
   }
   const updatedAt = typeof rawUpdatedAt === 'number' ? rawUpdatedAt : undefined;
@@ -383,6 +384,9 @@ function handleStateUpdate(message: WebviewMessage) {
   }
 
   setAppState(state);
+  if (state.locale === 'zh-CN' || state.locale === 'en-US') {
+    i18n.setLocale(state.locale);
+  }
 
   if (state.sessions) {
     updateSessions(ensureArray(state.sessions) as Session[]);
@@ -956,7 +960,7 @@ function handleContentMessage(standard: StandardMessage) {
         clearPendingRequest(requestId);
         markMessageComplete(currentBinding.placeholderMessageId);
         // 显示超时错误提示
-        addToast('error', '等待响应超时，请重试');
+        addToast('error', i18n.t('messageHandler.responseTimeout'));
       }
     }, 60000); // 60 秒超时
 
@@ -1855,7 +1859,7 @@ function handleSessionMessagesLoaded(message: WebviewMessage) {
 function handleConfirmationRequest(message: WebviewMessage) {
   const store = getState();
   if (store.appState?.interactionMode === 'auto') {
-    addToast('info', '自动模式已确认执行计划并继续');
+    addToast('info', i18n.t('messageHandler.autoConfirmPlan'));
     vscode.postMessage({ type: 'confirmPlan', confirmed: true });
     clearRequestedInteractionMode();
     setIsProcessing(true);
@@ -1875,7 +1879,7 @@ function handleRecoveryRequest(message: WebviewMessage) {
     const decision: 'retry' | 'continue' = canRetry
       ? 'retry'
       : 'continue';
-    addToast('info', `自动处理恢复请求：已选择${decision === 'retry' ? '重试' : '继续'}`);
+    addToast('info', i18n.t('messageHandler.autoRecovery', { decision: i18n.t(decision === 'retry' ? 'messageHandler.autoRecoveryRetry' : 'messageHandler.autoRecoveryContinue') }));
     vscode.postMessage({ type: 'confirmRecovery', decision });
     setIsProcessing(true);
     return;
@@ -1892,7 +1896,7 @@ function handleRecoveryRequest(message: WebviewMessage) {
 function handleClarificationRequest(message: WebviewMessage) {
   const store = getState();
   if (store.appState?.interactionMode === 'auto') {
-    addToast('info', '自动模式已跳过澄清并继续执行');
+    addToast('info', i18n.t('messageHandler.autoSkipClarification'));
     vscode.postMessage({
       type: 'answerClarification',
       answers: null,
@@ -1914,7 +1918,7 @@ function handleClarificationRequest(message: WebviewMessage) {
 function handleWorkerQuestionRequest(message: WebviewMessage) {
   const store = getState();
   if (store.appState?.interactionMode === 'auto') {
-    addToast('info', '自动处理 Worker 提问：未提供答案，按默认策略继续');
+    addToast('info', i18n.t('messageHandler.autoAnswerWorkerQuestion'));
     vscode.postMessage({ type: 'answerWorkerQuestion', answer: null });
     setIsProcessing(true);
     return;
@@ -1935,12 +1939,12 @@ function handleToolAuthorizationRequest(message: WebviewMessage) {
     : '';
   if (!requestId) {
     console.error('[MessageHandler] toolAuthorizationRequest 缺少 requestId:', message);
-    addToast('error', '工具授权请求缺少标识，已忽略该请求');
+    addToast('error', i18n.t('messageHandler.toolAuthMissingRequestId'));
     return;
   }
 
   if (store.appState?.interactionMode === 'auto') {
-    addToast('info', '自动模式已自动授权工具调用并继续');
+    addToast('info', i18n.t('messageHandler.autoToolAuthorization'));
     vscode.postMessage({ type: 'toolAuthorizationResponse', requestId, allowed: true });
     clearRequestedInteractionMode();
     setIsProcessing(true);
@@ -1954,7 +1958,7 @@ function handleToolAuthorizationRequest(message: WebviewMessage) {
       activeInteraction: getActiveInteractionType(),
     });
     vscode.postMessage({ type: 'toolAuthorizationResponse', requestId, allowed: false });
-    addToast('warning', '当前有待处理交互，已自动拒绝本次工具授权请求');
+    addToast('warning', i18n.t('messageHandler.toolAuthConflict'));
     return;
   }
 
@@ -2578,7 +2582,7 @@ function blocksToContent(blocks: ContentBlock[]): string {
       if (block.content) textParts.push(block.content);
     }
     if (block.type === 'file_change' && block.fileChange) {
-      textParts.push(`文件变更: ${block.fileChange.filePath} (${block.fileChange.changeType})`);
+      textParts.push(i18n.t('messageHandler.fileChange', { filePath: block.fileChange.filePath, changeType: block.fileChange.changeType }));
     }
     if (block.type === 'plan' && block.plan) {
       textParts.push(formatPlanBlock(block.plan));
@@ -2640,17 +2644,17 @@ function safeParseJson(value?: string): Record<string, unknown> | null {
 
 function formatPlanBlock(block: any): string {
   const parts: string[] = [];
-  if (block.goal) parts.push(`目标: ${block.goal}`);
-  if (block.analysis) parts.push(`分析: ${block.analysis}`);
+  if (block.goal) parts.push(i18n.t('messageHandler.planGoal', { goal: block.goal }));
+  if (block.analysis) parts.push(i18n.t('messageHandler.planAnalysis', { analysis: block.analysis }));
   if (Array.isArray(block.constraints) && block.constraints.length > 0) {
-    parts.push(`约束:\n- ${block.constraints.join('\n- ')}`);
+    parts.push(`${i18n.t('messageHandler.planConstraints')}\n- ${block.constraints.join('\n- ')}`);
   }
   if (Array.isArray(block.acceptanceCriteria) && block.acceptanceCriteria.length > 0) {
-    parts.push(`验收标准:\n- ${block.acceptanceCriteria.join('\n- ')}`);
+    parts.push(`${i18n.t('messageHandler.planAcceptanceCriteria')}\n- ${block.acceptanceCriteria.join('\n- ')}`);
   }
-  if (block.riskLevel) parts.push(`风险等级: ${block.riskLevel}`);
+  if (block.riskLevel) parts.push(i18n.t('messageHandler.planRiskLevel', { riskLevel: block.riskLevel }));
   if (Array.isArray(block.riskFactors) && block.riskFactors.length > 0) {
-    parts.push(`风险因素:\n- ${block.riskFactors.join('\n- ')}`);
+    parts.push(`${i18n.t('messageHandler.planRiskFactors')}\n- ${block.riskFactors.join('\n- ')}`);
   }
   return parts.join('\n\n');
 }

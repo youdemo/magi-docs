@@ -4,6 +4,7 @@
   import Icon from '../Icon.svelte';
   import FileSpan from '../FileSpan.svelte';
   import type { IconName } from '../../lib/icons';
+  import { i18n } from '../../stores/i18n.svelte';
 
   interface Props {
     block: ContentBlock;
@@ -76,13 +77,13 @@
   const hasDiff = $derived(diffLines.length > 0);
 
   const emptyDiffNote = $derived.by(() => {
-    if (!change) return '没有可展示的 diff。';
+    if (!change) return i18n.t('fileChangeCard.noDiff');
     const additions = typeof change.additions === 'number' ? change.additions : 0;
     const deletions = typeof change.deletions === 'number' ? change.deletions : 0;
     if (additions > 0 || deletions > 0) {
-      return '本次有文本变更，但后端未返回 diff 详情。';
+      return i18n.t('fileChangeCard.noDiffDetail');
     }
-    return '本次操作最终未产生文本变更。';
+    return i18n.t('fileChangeCard.noTextChange');
   });
 
   /** 对代码行做 hljs 语法高亮，返回 HTML 字符串数组（与 diffLines 一一对应） */

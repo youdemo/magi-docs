@@ -11,6 +11,7 @@
  */
 
 import { logger, LogCategory } from '../logging';
+import { t } from '../i18n';
 import type {
   WorkerSlot,
   ExtensionToWebviewMessage,
@@ -116,7 +117,7 @@ export class EventBindingService {
       if (newStatus === 'failed') {
         this.ctx.sendData('missionFailed', {
           missionId: mission.id,
-          error: '任务执行失败',
+          error: t('eventBinding.missionFailed'),
           sessionId: this.ctx.getActiveSessionId(),
         });
       }
@@ -173,7 +174,7 @@ export class EventBindingService {
         workerId: data.workerId,
         completedTodos: data.completedTodos,
       });
-      messageHub.systemNotice(`Session 已恢复，继续执行 ${data.completedTodos} 个已完成的 Todo`, {
+      messageHub.systemNotice(t('eventBinding.sessionResumed', { completedTodos: data.completedTodos }), {
         sessionId: data.sessionId,
         worker: data.workerId,
       });
@@ -232,7 +233,7 @@ export class EventBindingService {
         {
           type: InteractionType.PERMISSION,
           requestId: `approval-${data.todoId}`,
-          prompt: `**动态任务审批**\n\n原因: ${data.reason}\n\n请决定是否批准。`,
+          prompt: t('eventBinding.dynamicTodoApproval', { reason: data.reason }),
           required: true
         },
         'orchestrator',
@@ -270,7 +271,7 @@ export class EventBindingService {
   handleToolAuthorizationResponse(requestId: string | undefined, allowed: boolean): void {
     if (!requestId) {
       logger.warn('界面.工具授权.响应缺少请求ID', undefined, LogCategory.UI);
-      this.ctx.sendToast('工具授权响应缺少请求标识，已忽略', 'warning');
+      this.ctx.sendToast(t('eventBinding.toolAuthMissingRequestId'), 'warning');
       return;
     }
 
@@ -441,7 +442,7 @@ export class EventBindingService {
     globalEventBus.on('worker:error', (event) => {
       const data = event.data as { worker: string; error: string };
       this.ctx.sendOrchestratorMessage({
-        content: `${data.worker || 'Worker'}: ${data.error || '发生错误'}`,
+        content: t('eventBinding.workerError', { worker: data.worker || 'Worker', error: data.error || 'Error' }),
         messageType: 'error',
         metadata: { worker: data.worker },
       });
@@ -598,7 +599,7 @@ export class EventBindingService {
       {
         type: InteractionType.PERMISSION,
         requestId: next.requestId,
-        prompt: `工具授权请求: ${next.toolName}`,
+        prompt: t('eventBinding.toolAuthRequest', { toolName: next.toolName }),
         required: true,
       },
       'orchestrator',

@@ -4,6 +4,7 @@
   import type { Task, SubTaskItem, ActivePlanState, PlanLedgerRecord, Message } from '../types/message';
   import { vscode } from '../lib/vscode-bridge';
   import Icon from './Icon.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
   const appState = getState();
 
@@ -138,30 +139,12 @@
   }
 
   function getPlanStatusLabel(status: string): string {
-    switch (status) {
-      case 'draft':
-        return '草稿';
-      case 'awaiting_confirmation':
-        return '待确认';
-      case 'approved':
-        return '已批准';
-      case 'rejected':
-        return '已拒绝';
-      case 'executing':
-        return '执行中';
-      case 'partially_completed':
-        return '部分完成';
-      case 'completed':
-        return '已完成';
-      case 'failed':
-        return '失败';
-      case 'cancelled':
-        return '已取消';
-      case 'superseded':
-        return '已替换';
-      default:
-        return status || '未知';
-    }
+    // 后端 status 使用 snake_case（如 awaiting_confirmation），i18n key 使用 camelCase（如 awaitingConfirmation）
+    const camelStatus = status.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    const key = `tasks.planStatus.${camelStatus}`;
+    const label = i18n.t(key);
+    // 如果 key 没有匹配到翻译（返回原 key），则使用 status 或 '未知'
+    return label !== key ? label : (status || i18n.t('tasks.planStatus.unknown'));
   }
 
   function getPlanStatusClass(status: string): string {
@@ -328,11 +311,11 @@
         onclick={() => showPlanLedger = !showPlanLedger}
       >
         <span class="plan-ledger-title-wrap">
-          <span class="plan-ledger-title">计划账本</span>
+          <span class="plan-ledger-title">{i18n.t('tasks.planLedger.title')}</span>
           {#if activePlanState}
-            <span class="plan-ledger-badge">当前计划</span>
+            <span class="plan-ledger-badge">{i18n.t('tasks.planLedger.currentPlan')}</span>
           {:else}
-            <span class="plan-ledger-count">历史计划 {archivedPlans.length}</span>
+            <span class="plan-ledger-count">{i18n.t('tasks.planLedger.historyCount', { count: archivedPlans.length })}</span>
           {/if}
         </span>
         <span class="plan-ledger-chevron" class:expanded={showPlanLedger}>
@@ -344,7 +327,7 @@
         {#if activePlanState}
           <div class="plan-ledger-current">
             <div class="plan-ledger-summary">
-              <span>{activePlanRecord?.summary || '计划执行中'}</span>
+              <span>{activePlanRecord?.summary || i18n.t('tasks.planLedger.executingFallback')}</span>
               {#if activePlanRecord}
                 <span class="plan-status {getPlanStatusClass(activePlanRecord.status)}">
                   {getPlanStatusLabel(activePlanRecord.status)}
@@ -353,11 +336,11 @@
             </div>
             <div class="plan-ledger-meta">
               {#if activePlanRecord}
-                <span>模式：{activePlanRecord.mode === 'deep' ? '项目级' : '功能级'}</span>
-                <span>版本：v{activePlanRecord.version}</span>
-                <span>更新：{formatTimestamp(activePlanRecord.updatedAt)}</span>
+                <span>{i18n.t('tasks.planLedger.modeLabel', { mode: activePlanRecord.mode === 'deep' ? i18n.t('tasks.planLedger.modeDeep') : i18n.t('tasks.planLedger.modeShallow') })}</span>
+                <span>{i18n.t('tasks.planLedger.versionLabel', { version: activePlanRecord.version })}</span>
+                <span>{i18n.t('tasks.planLedger.updatedLabel', { time: formatTimestamp(activePlanRecord.updatedAt) })}</span>
               {:else}
-                <span>更新：{formatTimestamp(activePlanState.updatedAt)}</span>
+                <span>{i18n.t('tasks.planLedger.updatedLabel', { time: formatTimestamp(activePlanState.updatedAt) })}</span>
               {/if}
             </div>
             {#if activePlanProgress.total > 0}
@@ -377,17 +360,17 @@
               <button
                 type="button"
                 class="plan-history-item clickable"
-                title="定位到该版本对应的对话轮次"
+                title={i18n.t('tasks.planLedger.jumpTitle')}
                 onclick={() => jumpToPlanConversation(plan)}
               >
                 <div class="plan-history-main">
-                  <span class="plan-history-summary">{plan.summary || '未命名计划'}</span>
+                  <span class="plan-history-summary">{plan.summary || i18n.t('tasks.planLedger.unnamedPlan')}</span>
                   <span class="plan-status {getPlanStatusClass(plan.status)}">
                     {getPlanStatusLabel(plan.status)}
                   </span>
                 </div>
                 <div class="plan-history-meta">
-                  <span>{plan.mode === 'deep' ? '项目级' : '功能级'}</span>
+                  <span>{plan.mode === 'deep' ? i18n.t('tasks.planLedger.modeDeep') : i18n.t('tasks.planLedger.modeShallow')}</span>
                   <span>v{plan.version}</span>
                   <span>{formatTimestamp(plan.updatedAt)}</span>
                 </div>
@@ -405,11 +388,11 @@
       <div class="empty-icon-wrap">
         <Icon name="circleOutline" size={32} class="empty-icon" />
       </div>
-      <div class="empty-text">暂无任务</div>
+      <div class="empty-text">{i18n.t('tasks.empty.title')}</div>
       {#if activePlanState || archivedPlans.length > 0}
-        <div class="empty-hint">当前无活跃任务，可查看上方计划账本与历史执行记录</div>
+        <div class="empty-hint">{i18n.t('tasks.empty.hintWithPlan')}</div>
       {:else}
-        <div class="empty-hint">执行任务后会在此显示进度</div>
+        <div class="empty-hint">{i18n.t('tasks.empty.hintNoPlan')}</div>
       {/if}
     </div>
   {:else}
@@ -417,14 +400,14 @@
     {#if stats.total > 0}
       <div class="overview-bar">
         <div class="overview-stats">
-          <span class="overview-label">{stats.completed}/{stats.total} 已完成</span>
+          <span class="overview-label">{i18n.t('tasks.overview.completed', { completed: stats.completed, total: stats.total })}</span>
           {#if stats.running > 0}
             <span class="overview-dot running"></span>
-            <span class="overview-running">{stats.running} 执行中</span>
+            <span class="overview-running">{i18n.t('tasks.overview.running', { count: stats.running })}</span>
           {/if}
           {#if stats.failed > 0}
             <span class="overview-dot failed"></span>
-            <span class="overview-failed">{stats.failed} 失败</span>
+            <span class="overview-failed">{i18n.t('tasks.overview.failed', { count: stats.failed })}</span>
           {/if}
         </div>
         <div class="overview-progress">
@@ -463,7 +446,7 @@
             </span>
             <!-- 任务信息 -->
             <div class="task-body">
-              <span class="task-name">{task.name || task.prompt || '未命名任务'}</span>
+              <span class="task-name">{task.name || task.prompt || i18n.t('tasks.task.unnamed')}</span>
               {#if task.todoTotal > 0}
                 <span class="task-count">{task.todoCompleted}/{task.todoTotal}</span>
               {/if}
@@ -474,12 +457,12 @@
             <!-- 操作按钮（hover 显示） -->
             <div class="task-actions">
               {#if task.status === 'pending' || task.status === 'paused'}
-                <button class="action-btn" title="开始" onclick={(e) => { e.stopPropagation(); startTask(task.id); }}>
+                <button class="action-btn" title={i18n.t('tasks.task.startTitle')} onclick={(e) => { e.stopPropagation(); startTask(task.id); }}>
                   <Icon name="play" size={12} />
                 </button>
               {/if}
               {#if task.status !== 'running'}
-                <button class="action-btn danger" title="删除" onclick={(e) => { e.stopPropagation(); deleteTask(task.id); }}>
+                <button class="action-btn danger" title={i18n.t('tasks.task.deleteTitle')} onclick={(e) => { e.stopPropagation(); deleteTask(task.id); }}>
                   <Icon name="trash" size={12} />
                 </button>
               {/if}
@@ -522,7 +505,7 @@
                         <span class="todo-circle"></span>
                       {/if}
                     </span>
-                    <span class="todo-text">{todo.description || '未命名'}</span>
+                    <span class="todo-text">{todo.description || i18n.t('tasks.subtask.unnamed')}</span>
                     {#if task.workerGroups.length <= 1 && group.workerId}
                       <span class="todo-worker" style="color: {workerColors[group.workerId] || 'var(--foreground-muted)'}">{group.workerId}</span>
                     {/if}

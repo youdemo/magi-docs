@@ -1,6 +1,7 @@
 <script lang="ts">
   import Icon from './Icon.svelte';
   import MarkdownContent from './MarkdownContent.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
   // Worker 类型定义
   type WorkerType = 'claude' | 'codex' | 'gemini' | 'default';
@@ -122,20 +123,20 @@
   function statusLabel(status: LaneTask['status']): string {
     switch (status) {
       case 'running':
-        return '进行中';
+        return i18n.t('instructionCard.statusRunning');
       case 'completed':
-        return '已完成';
+        return i18n.t('instructionCard.statusCompleted');
       case 'failed':
-        return '失败';
+        return i18n.t('instructionCard.statusFailed');
       case 'skipped':
-        return '已跳过';
+        return i18n.t('instructionCard.statusSkipped');
       case 'cancelled':
-        return '已取消';
+        return i18n.t('instructionCard.statusCancelled');
       case 'waiting_deps':
-        return '等待依赖';
+        return i18n.t('instructionCard.statusWaitingDeps');
       case 'pending':
       default:
-        return '待执行';
+        return i18n.t('instructionCard.statusPending');
     }
   }
 
@@ -171,7 +172,7 @@
       <span class="header-icon">
         <Icon name="target" size={14} />
       </span>
-      <span class="header-title">任务说明</span>
+      <span class="header-title">{i18n.t('instructionCard.headerTitle')}</span>
     </div>
     {#if displayWorkerName}
       <div class="worker-tag">
@@ -185,7 +186,7 @@
   <div class="card-content">
     {#if laneView}
       <div class="lane-progress">
-        <span class="progress-label">执行队列</span>
+        <span class="progress-label">{i18n.t('instructionCard.laneProgress')}</span>
         <span class="progress-value">{laneView.laneIndex}/{laneView.laneTotal}</span>
       </div>
 
@@ -198,7 +199,7 @@
 
       {#if pendingTasks.length > 0}
         <div class="task-group">
-          <div class="group-title">待执行</div>
+          <div class="group-title">{i18n.t('instructionCard.groupPending')}</div>
           {#each pendingTasks as task (`pending-${task.taskId}`)}
             <div class="task-row pending">
               <span class="task-title">{task.title}</span>
@@ -210,7 +211,7 @@
 
       {#if otherTasks.length > 0}
         <div class="task-group">
-          <div class="group-title">处理中断</div>
+          <div class="group-title">{i18n.t('instructionCard.groupInterrupted')}</div>
           {#each otherTasks as task (`other-${task.taskId}`)}
             <div class="task-row neutral">
               <span class="task-title">{task.title}</span>
@@ -222,7 +223,7 @@
 
       {#if completedTasks.length > 0}
         <details class="task-group completed-group">
-          <summary class="group-title">已完成 {completedTasks.length} 项</summary>
+          <summary class="group-title">{i18n.t('instructionCard.groupCompleted', { count: completedTasks.length })}</summary>
           {#each completedTasks as task (`done-${task.taskId}`)}
             <div class="task-row done">
               <span class="task-title">{task.title}</span>

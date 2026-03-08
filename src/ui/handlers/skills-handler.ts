@@ -12,6 +12,7 @@ import { logger, LogCategory } from '../../logging';
 import type { WebviewToExtensionMessage } from '../../types';
 import { applySkillInstall } from '../../tools/skill-installation';
 import type { CommandHandler, CommandHandlerContext } from './types';
+import { t } from '../../i18n';
 
 type Msg<T extends string> = Extract<WebviewToExtensionMessage, { type: T }>;
 
@@ -92,7 +93,7 @@ export class SkillsCommandHandler implements CommandHandler {
       logger.info('Skills 配置已加载', {}, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('加载 Skills 配置失败', { error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`加载 Skills 配置失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.loadConfigFailed', { error: error.message }), 'error');
     }
   }
 
@@ -100,12 +101,12 @@ export class SkillsCommandHandler implements CommandHandler {
     try {
       const { LLMConfigLoader } = await import('../../llm/config');
       LLMConfigLoader.saveSkillsConfig(message.config);
-      ctx.sendToast('Skills 配置已保存', 'success');
+      ctx.sendToast(t('skills.toast.configSaved'), 'success');
       await this.reloadSkills(ctx, 'saveSkillsConfig');
       logger.info('Skills 配置已保存', {}, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('保存 Skills 配置失败', { error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`保存 Skills 配置失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.saveConfigFailed', { error: error.message }), 'error');
     }
   }
 
@@ -122,12 +123,12 @@ export class SkillsCommandHandler implements CommandHandler {
       }
       LLMConfigLoader.saveSkillsConfig(config);
       ctx.sendData('customToolAdded', { tool: message.tool });
-      ctx.sendToast(`自定义工具 "${message.tool.name}" 已添加`, 'success');
+      ctx.sendToast(t('skills.toast.customToolAdded', { name: message.tool.name }), 'success');
       await this.reloadSkills(ctx, 'addCustomTool');
       logger.info('自定义工具已添加', { name: message.tool.name }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('添加自定义工具失败', { error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`添加自定义工具失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.addCustomToolFailed', { error: error.message }), 'error');
     }
   }
 
@@ -138,12 +139,12 @@ export class SkillsCommandHandler implements CommandHandler {
       config.customTools = config.customTools.filter((t: any) => t.name !== message.toolName);
       LLMConfigLoader.saveSkillsConfig(config);
       ctx.sendData('customToolRemoved', { toolName: message.toolName });
-      ctx.sendToast(`自定义工具 "${message.toolName}" 已删除`, 'success');
+      ctx.sendToast(t('skills.toast.customToolDeleted', { name: message.toolName }), 'success');
       await this.reloadSkills(ctx, 'removeCustomTool');
       logger.info('自定义工具已删除', { name: message.toolName }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('删除自定义工具失败', { toolName: message.toolName, error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`删除自定义工具失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.deleteCustomToolFailed', { error: error.message }), 'error');
     }
   }
 
@@ -154,12 +155,12 @@ export class SkillsCommandHandler implements CommandHandler {
       config.instructionSkills = (config.instructionSkills || []).filter((s: any) => s.name !== message.skillName);
       LLMConfigLoader.saveSkillsConfig(config);
       ctx.sendData('instructionSkillRemoved', { skillName: message.skillName });
-      ctx.sendToast(`Instruction Skill "${message.skillName}" 已删除`, 'success');
+      ctx.sendToast(t('skills.toast.instructionSkillDeleted', { name: message.skillName }), 'success');
       await this.reloadSkills(ctx, 'removeInstructionSkill');
       logger.info('Instruction Skill 已删除', { name: message.skillName }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('删除 Instruction Skill 失败', { skillName: message.skillName, error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`删除 Instruction Skill 失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.deleteInstructionSkillFailed', { error: error.message }), 'error');
     }
   }
 
@@ -172,7 +173,7 @@ export class SkillsCommandHandler implements CommandHandler {
       const manager = new SkillRepositoryManager();
       const skills = await manager.getAllSkills(repositories);
       const skill = skills.find((item: any) => item.fullName === message.skillId || item.id === message.skillId);
-      if (!skill) throw new Error(`未找到 Skill: ${message.skillId}`);
+      if (!skill) throw new Error(t('skills.toast.skillNotFound', { skillId: message.skillId }));
 
       const config = LLMConfigLoader.loadSkillsConfig() || { customTools: [], instructionSkills: [], repositories };
       const updatedConfig = applySkillInstall(config, skill);
@@ -180,14 +181,14 @@ export class SkillsCommandHandler implements CommandHandler {
       LLMConfigLoader.saveSkillsConfig(config);
 
       ctx.sendData('skillInstalled', { skillId: message.skillId, skill });
-      ctx.sendToast(`Skill "${skill.description}" 已安装`, 'success');
+      ctx.sendToast(t('skills.toast.skillInstalled', { description: skill.description }), 'success');
       await this.handleLoadSkillsConfig(ctx);
       await this.reloadSkills(ctx, 'installSkill');
       logger.info('Skill 已安装', { skillId: message.skillId, name: skill.name }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('安装 Skill 失败', { skillId: message.skillId, error: error.message }, LogCategory.TOOLS);
       ctx.sendData('skillInstallFailed', { skillId: message.skillId, error: error.message, source: 'repository' });
-      ctx.sendToast(`安装 Skill 失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.installSkillFailed', { error: error.message }), 'error');
     }
   }
 
@@ -312,7 +313,7 @@ export class SkillsCommandHandler implements CommandHandler {
       canSelectFiles: true,
       canSelectFolders: false,
       canSelectMany: false,
-      openLabel: '导入 Skill',
+      openLabel: t('skills.dialog.importSkill'),
       filters: {
         Markdown: ['md'],
       },
@@ -375,7 +376,7 @@ export class SkillsCommandHandler implements CommandHandler {
       LLMConfigLoader.saveSkillsConfig(config);
 
       ctx.sendData('skillInstalled', { skillId: normalizedName, skill: localSkill, source: 'local' });
-      ctx.sendToast(`本地 Skill "${normalizedName}" 已安装`, 'success');
+      ctx.sendToast(t('skills.toast.localSkillInstalled', { name: normalizedName }), 'success');
       await this.handleLoadSkillsConfig(ctx);
       await this.reloadSkills(ctx, 'installLocalSkill');
       logger.info('本地 Skill 已安装', {
@@ -389,7 +390,7 @@ export class SkillsCommandHandler implements CommandHandler {
         error: message,
       }, LogCategory.TOOLS);
       ctx.sendData('skillInstallFailed', { source: 'local', filePath: fileUri.fsPath, error: message });
-      ctx.sendToast(`本地 Skill 安装失败: ${message}`, 'error');
+      ctx.sendToast(t('skills.toast.localSkillInstallFailed', { error: message }), 'error');
     }
   }
 
@@ -407,7 +408,7 @@ export class SkillsCommandHandler implements CommandHandler {
 
       const skills = await manager.getAllSkills(repositories);
       const latestSkill = skills.find((item: any) => item.fullName === message.skillName || item.name === message.skillName);
-      if (!latestSkill) throw new Error(`远程仓库中未找到 Skill: ${message.skillName}`);
+      if (!latestSkill) throw new Error(t('skills.toast.skillNotFoundInRepo', { skillName: message.skillName }));
 
       const config = LLMConfigLoader.loadSkillsConfig() || { customTools: [], instructionSkills: [], repositories };
       const updatedConfig = applySkillInstall(config, latestSkill);
@@ -415,13 +416,13 @@ export class SkillsCommandHandler implements CommandHandler {
       LLMConfigLoader.saveSkillsConfig(config);
 
       ctx.sendData('skillUpdated', { skillName: message.skillName, version: latestSkill.version });
-      ctx.sendToast(`Skill "${latestSkill.name}" 已更新${latestSkill.version ? ` (v${latestSkill.version})` : ''}`, 'success');
+      ctx.sendToast(t('skills.toast.skillUpdated', { name: latestSkill.name, version: latestSkill.version ? ` (v${latestSkill.version})` : '' }), 'success');
       await this.handleLoadSkillsConfig(ctx);
       await this.reloadSkills(ctx, 'updateSkill');
       logger.info('Skill 已更新', { name: message.skillName, version: latestSkill.version }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('更新 Skill 失败', { skillName: message.skillName, error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`更新 Skill 失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.updateSkillFailed', { error: error.message }), 'error');
       ctx.sendData('skillUpdated', { skillName: message.skillName, error: error.message });
     }
   }
@@ -438,7 +439,7 @@ export class SkillsCommandHandler implements CommandHandler {
 
       if (installedNames.size === 0) {
         ctx.sendData('allSkillsUpdated', { updatedCount: 0 });
-        ctx.sendToast('没有已安装的 Skill 需要更新', 'info');
+        ctx.sendToast(t('skills.toast.noSkillsToUpdate'), 'info');
         return;
       }
 
@@ -461,13 +462,13 @@ export class SkillsCommandHandler implements CommandHandler {
       LLMConfigLoader.saveSkillsConfig(config);
 
       ctx.sendData('allSkillsUpdated', { updatedCount });
-      ctx.sendToast(`已更新 ${updatedCount} 个 Skill`, 'success');
+      ctx.sendToast(t('skills.toast.allSkillsUpdated', { count: updatedCount }), 'success');
       await this.handleLoadSkillsConfig(ctx);
       await this.reloadSkills(ctx, 'updateAllSkills');
       logger.info('所有 Skill 已更新', { updatedCount }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('批量更新 Skill 失败', { error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`批量更新 Skill 失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.batchUpdateFailed', { error: error.message }), 'error');
     }
   }
 
@@ -479,7 +480,7 @@ export class SkillsCommandHandler implements CommandHandler {
       logger.info('Repositories loaded', { count: repositories.length }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('Failed to load repositories', { error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`加载仓库失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.loadRepoFailed', { error: error.message }), 'error');
     }
   }
 
@@ -497,11 +498,11 @@ export class SkillsCommandHandler implements CommandHandler {
       ctx.sendData('repositoryAdded', {
         repository: { id: result.id, url: message.url, name: repoInfo.name, type: repoInfo.type, enabled: true },
       });
-      ctx.sendToast(`仓库 "${repoInfo.name}" 已添加（${repoInfo.skillCount} 个技能）`, 'success');
+      ctx.sendToast(t('skills.toast.repoAdded', { name: repoInfo.name, count: repoInfo.skillCount }), 'success');
       logger.info('Repository added', { url: message.url, name: repoInfo.name, type: repoInfo.type }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('Failed to add repository', { url: message.url, error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`添加仓库失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.addRepoFailed', { error: error.message }), 'error');
       ctx.sendData('repositoryAddFailed', { error: error.message });
     }
   }
@@ -510,12 +511,12 @@ export class SkillsCommandHandler implements CommandHandler {
     try {
       const { LLMConfigLoader } = await import('../../llm/config');
       LLMConfigLoader.updateRepository(message.repositoryId, message.updates);
-      ctx.sendToast('仓库已更新', 'success');
+      ctx.sendToast(t('skills.toast.repoUpdated'), 'success');
       await this.handleLoadRepositories(ctx);
       logger.info('Repository updated', { id: message.repositoryId }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('Failed to update repository', { repositoryId: message.repositoryId, error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`更新仓库失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.updateRepoFailed', { error: error.message }), 'error');
     }
   }
 
@@ -524,12 +525,12 @@ export class SkillsCommandHandler implements CommandHandler {
       const { LLMConfigLoader } = await import('../../llm/config');
       LLMConfigLoader.deleteRepository(message.repositoryId);
       ctx.sendData('repositoryDeleted', { repositoryId: message.repositoryId });
-      ctx.sendToast('仓库已删除', 'success');
+      ctx.sendToast(t('skills.toast.repoDeleted'), 'success');
       await this.handleLoadRepositories(ctx);
       logger.info('Repository deleted', { id: message.repositoryId }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('Failed to delete repository', { repositoryId: message.repositoryId, error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`删除仓库失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.deleteRepoFailed', { error: error.message }), 'error');
     }
   }
 
@@ -539,11 +540,11 @@ export class SkillsCommandHandler implements CommandHandler {
       const manager = new SkillRepositoryManager();
       manager.clearCache(message.repositoryId);
       ctx.sendData('repositoryRefreshed', { repositoryId: message.repositoryId });
-      ctx.sendToast('仓库缓存已清除', 'success');
+      ctx.sendToast(t('skills.toast.repoCacheCleared'), 'success');
       logger.info('Repository cache cleared', { id: message.repositoryId }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('Failed to refresh repository', { repositoryId: message.repositoryId, error: error.message }, LogCategory.TOOLS);
-      ctx.sendToast(`刷新仓库失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.refreshRepoFailed', { error: error.message }), 'error');
     }
   }
 
@@ -579,7 +580,7 @@ export class SkillsCommandHandler implements CommandHandler {
           .join(', ');
         const suffix = failedRepositories.length > 2 ? '...' : '';
         ctx.sendToast(
-          `有 ${failedRepositories.length} 个仓库加载失败：${preview}${suffix}`,
+          t('skills.toast.repoLoadFailed', { count: failedRepositories.length, preview, suffix }),
           'warning',
         );
       }
@@ -591,7 +592,7 @@ export class SkillsCommandHandler implements CommandHandler {
       }, LogCategory.TOOLS);
     } catch (error: any) {
       logger.error('Failed to load skill library', { error: error.message, stack: error.stack }, LogCategory.TOOLS);
-      ctx.sendToast(`加载 Skill 库失败: ${error.message}`, 'error');
+      ctx.sendToast(t('skills.toast.loadSkillLibraryFailed', { error: error.message }), 'error');
     }
   }
 }

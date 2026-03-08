@@ -7,6 +7,7 @@
   import Icon from './Icon.svelte';
   import Toggle from './Toggle.svelte';
   import { getState } from '../stores/messages.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
 
   interface Props {
@@ -60,21 +61,21 @@
   // 全局用户规则
   let userRules = $state('');
 
-  const categoryLabels: Record<string, string> = {
-    architecture: '架构设计(architecture)',
-    implement: '功能实现(implement)',
-    refactor: '代码重构(refactor)',
-    bugfix: '缺陷修复(bugfix)',
-    debug: '问题排查(debug)',
-    data_analysis: '数据分析(data/analysis)',
-    frontend: '前端开发(frontend)',
-    backend: '后端开发(backend)',
-    test: '测试编写(test)',
-    document: '文档编写(document)',
-    review: '代码审查(review)',
-    integration: '集成联调(integration)',
-    simple: '简单任务(simple)',
-    general: '通用任务(general)'
+  const categoryLabels: Record<string, () => string> = {
+    architecture: () => i18n.t('settings.profile.category.architecture'),
+    implement: () => i18n.t('settings.profile.category.implement'),
+    refactor: () => i18n.t('settings.profile.category.refactor'),
+    bugfix: () => i18n.t('settings.profile.category.bugfix'),
+    debug: () => i18n.t('settings.profile.category.debug'),
+    data_analysis: () => i18n.t('settings.profile.category.dataAnalysis'),
+    frontend: () => i18n.t('settings.profile.category.frontend'),
+    backend: () => i18n.t('settings.profile.category.backend'),
+    test: () => i18n.t('settings.profile.category.test'),
+    document: () => i18n.t('settings.profile.category.document'),
+    review: () => i18n.t('settings.profile.category.review'),
+    integration: () => i18n.t('settings.profile.category.integration'),
+    simple: () => i18n.t('settings.profile.category.simple'),
+    general: () => i18n.t('settings.profile.category.general')
   };
 
   // 分类显示顺序
@@ -312,19 +313,19 @@
   }
 
   // 状态文本映射
-  const statusTexts: Record<string, string> = {
-    available: '已连接',
-    connected: '已连接',
-    disabled: '已禁用',
-    not_configured: '未配置',
-    checking: '检测中...',
-    error: '连接失败',
-    unavailable: '不可用',
-    invalid_model: '模型不存在',
-    auth_failed: '鉴权失败',
-    network_error: '网络错误',
-    timeout: '连接超时',
-    orchestrator: '使用编排者模型'
+  const statusTexts: Record<string, () => string> = {
+    available: () => i18n.t('settings.status.connected'),
+    connected: () => i18n.t('settings.status.connected'),
+    disabled: () => i18n.t('settings.status.disabled'),
+    not_configured: () => i18n.t('settings.status.notConfigured'),
+    checking: () => i18n.t('settings.status.checking'),
+    error: () => i18n.t('settings.status.error'),
+    unavailable: () => i18n.t('settings.status.unavailable'),
+    invalid_model: () => i18n.t('settings.status.invalidModel'),
+    auth_failed: () => i18n.t('settings.status.authFailed'),
+    network_error: () => i18n.t('settings.status.networkError'),
+    timeout: () => i18n.t('settings.status.timeout'),
+    orchestrator: () => i18n.t('settings.status.orchestrator')
   };
 
   function getStatusClass(status: string): string {
@@ -749,7 +750,7 @@
     mcpDialogError = '';
     const jsonText = mcpDialogJson.trim();
     if (!jsonText) {
-      mcpDialogError = '请输入 MCP JSON 配置';
+      mcpDialogError = i18n.t('settings.mcp.emptyJson');
       return;
     }
 
@@ -757,29 +758,29 @@
     try {
       parsed = JSON.parse(jsonText);
     } catch (error: any) {
-      mcpDialogError = 'JSON 格式错误：' + error.message;
+      mcpDialogError = i18n.t('settings.mcp.jsonError', { error: error.message });
       return;
     }
 
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-      mcpDialogError = 'JSON 必须是对象';
+      mcpDialogError = i18n.t('settings.mcp.jsonMustBeObject');
       return;
     }
 
     const servers = parsed.mcpServers;
     if (!servers || typeof servers !== 'object' || Array.isArray(servers)) {
-      mcpDialogError = '缺少 mcpServers 对象';
+      mcpDialogError = i18n.t('settings.mcp.missingMcpServers');
       return;
     }
 
     const serverNames = Object.keys(servers);
     if (serverNames.length === 0) {
-      mcpDialogError = 'mcpServers 不能为空';
+      mcpDialogError = i18n.t('settings.mcp.mcpServersEmpty');
       return;
     }
 
     if (serverNames.length > 1 && mcpDialogIsEdit) {
-      mcpDialogError = '编辑模式仅支持一个服务器';
+      mcpDialogError = i18n.t('settings.mcp.editOnlyOneServer');
       return;
     }
 
@@ -789,7 +790,7 @@
 
     const saveServer = (name: string, cfg: any, isUpdate: boolean): boolean => {
       if (!cfg || typeof cfg !== 'object') {
-        mcpDialogError = `服务器 ${name} 配置无效`;
+        mcpDialogError = i18n.t('settings.mcp.invalidServerConfig', { name });
         return false;
       }
 
@@ -798,7 +799,7 @@
 
       // command 和 url 至少要有一个
       if (!command && !url) {
-        mcpDialogError = `服务器 ${name} 缺少 command 或 url`;
+        mcpDialogError = i18n.t('settings.mcp.missingCommandOrUrl', { name });
         return false;
       }
 
@@ -808,7 +809,7 @@
         // HTTP (SSE / Streamable HTTP) 类型
         const headers = cfg.headers ?? {};
         if (typeof headers !== 'object' || Array.isArray(headers)) {
-          mcpDialogError = `服务器 ${name} 的 headers 必须是对象`;
+          mcpDialogError = i18n.t('settings.mcp.headersMustBeObject', { name });
           return false;
         }
 
@@ -824,13 +825,13 @@
         // stdio 类型
         const args = cfg.args ?? [];
         if (!Array.isArray(args)) {
-          mcpDialogError = `服务器 ${name} 的 args 必须是数组`;
+          mcpDialogError = i18n.t('settings.mcp.argsMustBeArray', { name });
           return false;
         }
 
         const env = cfg.env ?? {};
         if (typeof env !== 'object' || Array.isArray(env)) {
-          mcpDialogError = `服务器 ${name} 的 env 必须是对象`;
+          mcpDialogError = i18n.t('settings.mcp.envMustBeObject', { name });
           return false;
         }
 
@@ -886,7 +887,7 @@
   }
 
   function deleteMCPServer(serverId: string) {
-    showConfirm('删除 MCP 服务器', '确定要删除此 MCP 服务器吗？', () => {
+    showConfirm(i18n.t('settings.tools.deleteMcpServer'), i18n.t('settings.tools.deleteMcpServerConfirm'), () => {
       vscode.postMessage({ type: 'deleteMCPServer', serverId });
     });
   }
@@ -933,9 +934,9 @@
   }
 
   function getMCPHealthLabel(server: MCPServer): string {
-    if (server.health === 'connected') return '已连接';
-    if (server.health === 'degraded') return '连接降级';
-    return '已断开';
+    if (server.health === 'connected') return i18n.t('settings.tools.mcpHealthConnected');
+    if (server.health === 'degraded') return i18n.t('settings.tools.mcpHealthDegraded');
+    return i18n.t('settings.tools.mcpHealthDisconnected');
   }
 
   // ============================================
@@ -966,7 +967,7 @@
   }
 
   function deleteRepository(repositoryId: string) {
-    showConfirm('删除仓库', '确定要删除此仓库吗？', () => {
+    showConfirm(i18n.t('settings.repo.deleteRepo'), i18n.t('settings.repo.deleteRepoConfirm'), () => {
       vscode.postMessage({ type: 'deleteRepository', repositoryId });
     });
   }
@@ -1016,12 +1017,12 @@
   function deleteSkill(skill: SkillItem) {
     if (skill.source === 'custom') {
       // 删除自定义工具
-      showConfirm('删除自定义工具', `确定要删除自定义工具 "${skill.name}" 吗？`, () => {
+      showConfirm(i18n.t('settings.tools.deleteCustomTool'), i18n.t('settings.tools.deleteCustomToolConfirm', { name: skill.name }), () => {
         vscode.postMessage({ type: 'removeCustomTool', toolName: skill.name });
       });
     } else if (skill.source === 'instruction') {
       // Instruction skill 删除
-      showConfirm('删除 Instruction Skill', `确定要删除 Instruction Skill "${skill.name}" 吗？`, () => {
+      showConfirm(i18n.t('settings.tools.deleteInstructionSkill'), i18n.t('settings.tools.deleteInstructionSkillConfirm', { name: skill.name }), () => {
         vscode.postMessage({ type: 'removeInstructionSkill', skillName: skill.name });
       });
     }
@@ -1059,7 +1060,7 @@
       const repoId = skill.repositoryId || 'unknown';
       if (!groups[repoId]) {
         groups[repoId] = {
-          name: skill.repositoryName || '未知仓库',
+          name: skill.repositoryName || i18n.t('settings.skillLibrary.unknownRepo'),
           skills: []
         };
       }
@@ -1266,7 +1267,7 @@
             ...appState.modelStatus,
             auxiliary: {
               status: 'orchestrator',
-              model: orchestratorModel ? `编排模型: ${orchestratorModel}` : modelStatuses.auxiliary?.model,
+              model: orchestratorModel ? i18n.t('settings.model.orchestratorModelLabel', { model: orchestratorModel }) : modelStatuses.auxiliary?.model,
               error: payload?.error
             }
           };
@@ -1502,14 +1503,31 @@
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
   <div class="settings-panel" onclick={() => closeGuidancePopover()}>
     <div class="settings-header">
-      <span class="settings-title">设置</span>
+      <span class="settings-title">{i18n.t('settings.title')}</span>
       {#if userInfo}
         <div class="logout-section">
           <span class="user-info-text">{userInfo}</span>
-          <button class="settings-btn secondary logout-btn" onclick={logout}>退出</button>
+          <button class="settings-btn secondary logout-btn" onclick={logout}>{i18n.t('settings.logout')}</button>
         </div>
       {/if}
-      <button class="btn-icon btn-icon--sm" onclick={closeSettings} title="关闭设置">
+      <!-- Language selector - compact segment button -->
+      <div class="locale-selector">
+        <button
+          class="locale-btn"
+          class:active={i18n.locale === 'zh-CN'}
+          onclick={() => { i18n.setLocale('zh-CN'); vscode.postMessage({ type: 'updateSetting', key: 'locale', value: 'zh-CN' }); }}
+        >
+          {i18n.t('settings.locale.zhCN')}
+        </button>
+        <button
+          class="locale-btn"
+          class:active={i18n.locale === 'en-US'}
+          onclick={() => { i18n.setLocale('en-US'); vscode.postMessage({ type: 'updateSetting', key: 'locale', value: 'en-US' }); }}
+        >
+          {i18n.t('settings.locale.enUS')}
+        </button>
+      </div>
+      <button class="btn-icon btn-icon--sm" onclick={closeSettings} title={i18n.t('settings.closeSettings')}>
         <Icon name="close" size={14} />
       </button>
     </div>
@@ -1518,19 +1536,19 @@
     <div class="settings-tabs">
       <button class="settings-tab" class:active={activeTab === 'stats'} onclick={() => activeTab = 'stats'}>
         <Icon name="stats" size={14} />
-        统计
+        {i18n.t('settings.tabStats')}
       </button>
       <button class="settings-tab" class:active={activeTab === 'model'} onclick={() => activeTab = 'model'}>
         <Icon name="model" size={14} />
-        模型
+        {i18n.t('settings.tabModel')}
       </button>
       <button class="settings-tab" class:active={activeTab === 'profile'} onclick={() => activeTab = 'profile'}>
         <Icon name="profile" size={14} />
-        画像
+        {i18n.t('settings.tabProfile')}
       </button>
       <button class="settings-tab" class:active={activeTab === 'tools'} onclick={() => activeTab = 'tools'}>
         <Icon name="tools" size={14} />
-        工具
+        {i18n.t('settings.tabTools')}
       </button>
     </div>
 
@@ -1540,17 +1558,17 @@
         <!-- 统计 Tab -->
         <div class="settings-section stats-section">
           <div class="settings-section-header">
-            <div class="settings-section-title">模型状态与统计</div>
+            <div class="settings-section-title">{i18n.t('settings.stats.title')}</div>
             <div class="settings-section-actions">
-              <div class="settings-summary-chip">输入 Token: {formatTokens(totalInputTokens)}</div>
-              <div class="settings-summary-chip">输出 Token: {formatTokens(totalOutputTokens)}</div>
-              <div class="settings-summary-chip">总 Token: {formatTokens(totalTokens)}</div>
+              <div class="settings-summary-chip">{i18n.t('settings.stats.inputTokens', { count: formatTokens(totalInputTokens) })}</div>
+              <div class="settings-summary-chip">{i18n.t('settings.stats.outputTokens', { count: formatTokens(totalOutputTokens) })}</div>
+              <div class="settings-summary-chip">{i18n.t('settings.stats.totalTokens', { count: formatTokens(totalTokens) })}</div>
               <div class="stats-action-buttons">
                 <button class="model-refresh-btn" class:loading={isRefreshing} onclick={refreshConnections} disabled={isRefreshing}>
                   <Icon name="refresh" size={14} />
-                  {isRefreshing ? '检测中...' : '检测'}
+                  {isRefreshing ? i18n.t('settings.stats.checking') : i18n.t('settings.stats.check')}
                 </button>
-                <button class="settings-btn secondary" onclick={showResetConfirmDialog}>重置 Token</button>
+                <button class="settings-btn secondary" onclick={showResetConfirmDialog}>{i18n.t('settings.stats.resetTokens')}</button>
               </div>
             </div>
           </div>
@@ -1562,10 +1580,10 @@
               {@const statusClass = getStatusClass(status?.status || 'checking')}
               {@const modelLabel = status?.model
                 || (status?.status === 'not_configured'
-                  ? '未配置'
+                  ? i18n.t('settings.stats.notConfigured')
                   : status?.status === 'disabled'
-                    ? '已禁用'
-                    : '未知模型')}
+                    ? i18n.t('settings.stats.disabled')
+                    : i18n.t('settings.stats.unknownModel'))}
               <div class="model-connection-item {statusClass}" data-worker={worker}>
                 <div class="model-connection-icon {worker}">
                   <Icon name="circle" size={14} />
@@ -1573,27 +1591,27 @@
                 <div class="model-connection-info">
                   <div class="model-connection-header">
                     <span class="model-connection-name">
-                      {worker === 'orchestrator' ? '编排模型' : worker === 'auxiliary' ? '辅助模型' : worker.charAt(0).toUpperCase() + worker.slice(1)}
+                      {worker === 'orchestrator' ? i18n.t('settings.stats.orchestratorModel') : worker === 'auxiliary' ? i18n.t('settings.stats.auxiliaryModel') : worker.charAt(0).toUpperCase() + worker.slice(1)}
                       {#if worker === 'orchestrator' || worker === 'auxiliary'}
-                        <span class="required-badge">必需</span>
+                        <span class="required-badge">{i18n.t('settings.stats.required')}</span>
                       {/if}
                     </span>
-                    <span class="model-connection-badge {statusClass}">{statusTexts[status?.status] || statusTexts['checking']}</span>
+                    <span class="model-connection-badge {statusClass}">{(statusTexts[status?.status] || statusTexts['checking'])()}</span>
                   </div>
                   <div class="model-connection-model">{modelLabel}</div>
                   {#if status?.error}
                     <div class="model-connection-error">{status.error}</div>
                   {/if}
                   <div class="model-connection-stats-inline">
-                    <span>任务: {workerStats?.totalExecutions ?? '--'}</span>
+                    <span>{i18n.t('settings.stats.tasks', { count: workerStats?.totalExecutions ?? '--' })}</span>
                     <span class="stats-divider">|</span>
-                    <span>成功率: {workerStats?.successRate != null ? `${Math.round(workerStats.successRate * 100)}%` : '--'}</span>
+                    <span>{i18n.t('settings.stats.successRate', { rate: workerStats?.successRate != null ? `${Math.round(workerStats.successRate * 100)}%` : '--' })}</span>
                     <span class="stats-divider">|</span>
-                    <span>输入: {formatTokens(workerStats?.totalInputTokens ?? 0)}</span>
+                    <span>{i18n.t('settings.stats.input', { count: formatTokens(workerStats?.totalInputTokens ?? 0) })}</span>
                     <span class="stats-divider">|</span>
-                    <span>输出: {formatTokens(workerStats?.totalOutputTokens ?? 0)}</span>
+                    <span>{i18n.t('settings.stats.output', { count: formatTokens(workerStats?.totalOutputTokens ?? 0) })}</span>
                     <span class="stats-divider">|</span>
-                    <span>总计: {formatTokens((workerStats?.totalInputTokens ?? 0) + (workerStats?.totalOutputTokens ?? 0))}</span>
+                    <span>{i18n.t('settings.stats.total', { count: formatTokens((workerStats?.totalInputTokens ?? 0) + (workerStats?.totalOutputTokens ?? 0)) })}</span>
                   </div>
                 </div>
               </div>
@@ -1605,34 +1623,34 @@
         <div class="model-config-grid">
           <div class="model-config-stack">
             <div class="model-config-tabs">
-              <button class="model-config-tab" class:active={modelConfigTab === 'orch'} onclick={() => modelConfigTab = 'orch'}>编排模型</button>
-              <button class="model-config-tab" class:active={modelConfigTab === 'comp'} onclick={() => modelConfigTab = 'comp'}>辅助模型</button>
+              <button class="model-config-tab" class:active={modelConfigTab === 'orch'} onclick={() => modelConfigTab = 'orch'}>{i18n.t('settings.model.orchestratorModel')}</button>
+              <button class="model-config-tab" class:active={modelConfigTab === 'comp'} onclick={() => modelConfigTab = 'comp'}>{i18n.t('settings.model.auxiliaryModel')}</button>
             </div>
 
             {#if modelConfigTab === 'orch'}
               <div class="model-config-card">
                 <div class="model-config-header">
-                  <div class="model-config-title">编排模型</div>
-                  <div class="model-config-desc">驱动任务规划与协调</div>
+                  <div class="model-config-title">{i18n.t('settings.model.orchestratorModel')}</div>
+                  <div class="model-config-desc">{i18n.t('settings.model.orchestratorDesc')}</div>
                 </div>
                 <!-- svelte-ignore a11y_label_has_associated_control -->
                 <div class="llm-config-form">
                   <div class="llm-config-field">
-                    <label class="llm-config-label">Base URL</label>
+                    <label class="llm-config-label">{i18n.t('settings.model.field.baseUrl')}</label>
                     <input type="text" class="llm-config-input" bind:value={orchConfig.baseUrl} placeholder="https://api.anthropic.com">
                   </div>
                   <div class="llm-config-field">
-                    <label class="llm-config-label">API Key</label>
+                    <label class="llm-config-label">{i18n.t('settings.model.field.apiKey')}</label>
                     <div class="api-key-wrapper">
                       <input type={keyVisible.orch ? 'text' : 'password'} class="llm-config-input api-key-input" bind:value={orchConfig.apiKey} placeholder="sk-ant-...">
-                      <button type="button" class="api-key-toggle" onclick={() => keyVisible.orch = !keyVisible.orch} title={keyVisible.orch ? '隐藏密钥' : '显示密钥'}>
+                      <button type="button" class="api-key-toggle" onclick={() => keyVisible.orch = !keyVisible.orch} title={keyVisible.orch ? i18n.t('input.hideKey') : i18n.t('input.showKey')}>
                         <Icon name={keyVisible.orch ? 'eye-slash' : 'eye'} size={14} />
                       </button>
                     </div>
                   </div>
                   <div class="llm-config-field-row has-thinking" class:has-level={orchConfig.provider === 'openai'}>
                     <div class="llm-config-field">
-                      <label class="llm-config-label">Model</label>
+                      <label class="llm-config-label">{i18n.t('settings.model.field.model')}</label>
                       <div class="model-combobox">
                         <input type="text" class="llm-config-input" bind:value={orchConfig.model} placeholder="claude-3-5-sonnet-20241022"
                           onfocus={(e) => { if (modelLists.orch.length > 0) openModelDropdown('orch', e.currentTarget); }}
@@ -1656,25 +1674,25 @@
                       </div>
                     </div>
                     <div class="llm-config-field">
-                      <label class="llm-config-label">Provider</label>
+                      <label class="llm-config-label">{i18n.t('settings.model.field.provider')}</label>
                       <select class="llm-config-select" bind:value={orchConfig.provider}>
-                        <option value="openai">OpenAI</option>
-                        <option value="anthropic">Anthropic</option>
+                        <option value="openai">{i18n.t('settings.model.provider.openai')}</option>
+                        <option value="anthropic">{i18n.t('settings.model.provider.anthropic')}</option>
                       </select>
                     </div>
                     {#if orchConfig.provider === 'openai'}
                     <div class="llm-config-field">
-                      <label class="llm-config-label">Level</label>
+                      <label class="llm-config-label">{i18n.t('settings.model.field.level')}</label>
                       <select class="llm-config-select" bind:value={orchConfig.reasoningEffort}>
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
+                        <option value="low">{i18n.t('settings.model.reasoning.low')}</option>
+                        <option value="medium">{i18n.t('settings.model.reasoning.medium')}</option>
+                        <option value="high">{i18n.t('settings.model.reasoning.high')}</option>
                       </select>
                     </div>
                     {/if}
                     <div class="llm-config-field inline-toggle">
-                      <label class="llm-config-label">Thinking</label>
-                      <button type="button" class="llm-config-toggle-btn" title={orchConfig.thinking ? '关闭思考' : '开启思考'} onclick={() => orchConfig.thinking = !orchConfig.thinking}>
+                      <label class="llm-config-label">{i18n.t('settings.model.field.thinking')}</label>
+                      <button type="button" class="llm-config-toggle-btn" title={orchConfig.thinking ? i18n.t('settings.model.disableThinking') : i18n.t('settings.model.enableThinking')} onclick={() => orchConfig.thinking = !orchConfig.thinking}>
                         <span class="toggle-switch" class:active={orchConfig.thinking}></span>
                       </button>
                     </div>
@@ -1689,12 +1707,12 @@
                     >
                       {#if saveStatus.orch === 'saving'}
                         <Icon name="refresh" size={14} />
-                        保存中...
+                        {i18n.t('settings.model.saving')}
                       {:else if saveStatus.orch === 'saved'}
                         <Icon name="check" size={14} />
-                        已保存
+                        {i18n.t('settings.model.saved')}
                       {:else}
-                        保存配置
+                        {i18n.t('settings.model.saveConfig')}
                       {/if}
                     </button>
                     <button
@@ -1707,16 +1725,16 @@
                     >
                       {#if testStatus.orch === 'testing'}
                         <Icon name="refresh" size={14} />
-                        测试中...
+                        {i18n.t('settings.model.testing')}
                       {:else if testStatus.orch === 'success'}
                         <Icon name="check" size={14} />
-                        连接成功
+                        {i18n.t('settings.model.testSuccess')}
                       {:else if testStatus.orch === 'error'}
                         <Icon name="close" size={14} />
-                        连接失败
+                        {i18n.t('settings.model.testFailed')}
                       {:else}
                         <Icon name="check" size={14} />
-                        测试连接
+                        {i18n.t('settings.model.testConnection')}
                       {/if}
                     </button>
                   </div>
@@ -1725,27 +1743,27 @@
             {:else if modelConfigTab === 'comp'}
               <div class="model-config-card">
                 <div class="model-config-header">
-                  <div class="model-config-title">辅助模型</div>
-                  <div class="model-config-desc">用于上下文压缩、知识提取与查询扩展</div>
+                  <div class="model-config-title">{i18n.t('settings.model.auxiliaryModel')}</div>
+                  <div class="model-config-desc">{i18n.t('settings.model.auxiliaryDesc')}</div>
                 </div>
                 <!-- svelte-ignore a11y_label_has_associated_control -->
                 <div class="llm-config-form">
                   <div class="llm-config-field">
-                    <label class="llm-config-label">Base URL</label>
+                    <label class="llm-config-label">{i18n.t('settings.model.field.baseUrl')}</label>
                     <input type="text" class="llm-config-input" bind:value={compConfig.baseUrl} placeholder="https://api.anthropic.com">
                   </div>
                   <div class="llm-config-field">
-                    <label class="llm-config-label">API Key</label>
+                    <label class="llm-config-label">{i18n.t('settings.model.field.apiKey')}</label>
                     <div class="api-key-wrapper">
                       <input type={keyVisible.comp ? 'text' : 'password'} class="llm-config-input api-key-input" bind:value={compConfig.apiKey} placeholder="sk-ant-...">
-                      <button type="button" class="api-key-toggle" onclick={() => keyVisible.comp = !keyVisible.comp} title={keyVisible.comp ? '隐藏密钥' : '显示密钥'}>
+                      <button type="button" class="api-key-toggle" onclick={() => keyVisible.comp = !keyVisible.comp} title={keyVisible.comp ? i18n.t('input.hideKey') : i18n.t('input.showKey')}>
                         <Icon name={keyVisible.comp ? 'eye-slash' : 'eye'} size={14} />
                       </button>
                     </div>
                   </div>
                   <div class="llm-config-field-row">
                     <div class="llm-config-field">
-                      <label class="llm-config-label">Model</label>
+                      <label class="llm-config-label">{i18n.t('settings.model.field.model')}</label>
                       <div class="model-combobox">
                         <input type="text" class="llm-config-input" bind:value={compConfig.model} placeholder="claude-3-haiku-20240307"
                           onfocus={(e) => { if (modelLists.comp.length > 0) openModelDropdown('comp', e.currentTarget); }}
@@ -1769,10 +1787,10 @@
                       </div>
                     </div>
                     <div class="llm-config-field">
-                      <label class="llm-config-label">Provider</label>
+                      <label class="llm-config-label">{i18n.t('settings.model.field.provider')}</label>
                       <select class="llm-config-select" bind:value={compConfig.provider}>
-                        <option value="openai">OpenAI</option>
-                        <option value="anthropic">Anthropic</option>
+                        <option value="openai">{i18n.t('settings.model.provider.openai')}</option>
+                        <option value="anthropic">{i18n.t('settings.model.provider.anthropic')}</option>
                       </select>
                     </div>
                   </div>
@@ -1786,12 +1804,12 @@
                     >
                       {#if saveStatus.comp === 'saving'}
                         <Icon name="refresh" size={14} />
-                        保存中...
+                        {i18n.t('settings.model.saving')}
                       {:else if saveStatus.comp === 'saved'}
                         <Icon name="check" size={14} />
-                        已保存
+                        {i18n.t('settings.model.saved')}
                       {:else}
-                        保存配置
+                        {i18n.t('settings.model.saveConfig')}
                       {/if}
                     </button>
                     <button
@@ -1804,16 +1822,16 @@
                     >
                       {#if testStatus.comp === 'testing'}
                         <Icon name="refresh" size={14} />
-                        测试中...
+                        {i18n.t('settings.model.testing')}
                       {:else if testStatus.comp === 'success'}
                         <Icon name="check" size={14} />
-                        连接成功
+                        {i18n.t('settings.model.testSuccess')}
                       {:else if testStatus.comp === 'error'}
                         <Icon name="close" size={14} />
-                        连接失败
+                        {i18n.t('settings.model.testFailed')}
                       {:else}
                         <Icon name="check" size={14} />
-                        测试连接
+                        {i18n.t('settings.model.testConnection')}
                       {/if}
                     </button>
                   </div>
@@ -1823,19 +1841,19 @@
           </div>
           <div class="model-config-card">
             <div class="model-config-header-row">
-              <div class="model-config-title">Worker 模型</div>
+              <div class="model-config-title">{i18n.t('settings.model.workerModel')}</div>
               <div class="worker-model-tabs">
                 <button class="worker-model-tab" class:active={workerModelTab === 'claude'} onclick={() => workerModelTab = 'claude'}>
                   <span class="worker-dot claude"></span>
-                  Claude
+                  {i18n.t('settings.model.worker.claude')}
                 </button>
                 <button class="worker-model-tab" class:active={workerModelTab === 'codex'} onclick={() => workerModelTab = 'codex'}>
                   <span class="worker-dot codex"></span>
-                  Codex
+                  {i18n.t('settings.model.worker.codex')}
                 </button>
                 <button class="worker-model-tab" class:active={workerModelTab === 'gemini'} onclick={() => workerModelTab = 'gemini'}>
                   <span class="worker-dot gemini"></span>
-                  Gemini
+                  {i18n.t('settings.model.worker.gemini')}
                 </button>
               </div>
             </div>
@@ -1843,29 +1861,29 @@
             <div class="llm-config-form">
               <div class="llm-config-field-row url-toggle-row">
                 <div class="llm-config-field">
-                  <label class="llm-config-label">Base URL</label>
+                  <label class="llm-config-label">{i18n.t('settings.model.field.baseUrl')}</label>
                   <input type="text" class="llm-config-input" bind:value={workerConfigs[workerModelTab].baseUrl} placeholder="https://api.anthropic.com">
                 </div>
                 <div class="llm-config-field inline-toggle">
-                  <label class="llm-config-label">状态</label>
+                  <label class="llm-config-label">{i18n.t('settings.model.status')}</label>
                   <button type="button" class="llm-config-toggle-btn" onclick={() => workerConfigs[workerModelTab].enabled = !workerConfigs[workerModelTab].enabled}>
                     <span class="toggle-switch" class:active={workerConfigs[workerModelTab].enabled}></span>
-                    <span>启用</span>
+                    <span>{i18n.t('settings.model.enable')}</span>
                   </button>
                 </div>
               </div>
               <div class="llm-config-field">
-                <label class="llm-config-label">API Key</label>
+                <label class="llm-config-label">{i18n.t('settings.model.field.apiKey')}</label>
                 <div class="api-key-wrapper">
                   <input type={keyVisible.worker ? 'text' : 'password'} class="llm-config-input api-key-input" bind:value={workerConfigs[workerModelTab].apiKey} placeholder="sk-ant-...">
-                  <button type="button" class="api-key-toggle" onclick={() => keyVisible.worker = !keyVisible.worker} title={keyVisible.worker ? '隐藏密钥' : '显示密钥'}>
+                  <button type="button" class="api-key-toggle" onclick={() => keyVisible.worker = !keyVisible.worker} title={keyVisible.worker ? i18n.t('input.hideKey') : i18n.t('input.showKey')}>
                     <Icon name={keyVisible.worker ? 'eye-slash' : 'eye'} size={14} />
                   </button>
                 </div>
               </div>
               <div class="llm-config-field-row has-thinking" class:has-level={workerConfigs[workerModelTab].provider === 'openai'}>
                 <div class="llm-config-field">
-                  <label class="llm-config-label">Model</label>
+                  <label class="llm-config-label">{i18n.t('settings.model.field.model')}</label>
                   <div class="model-combobox">
                     <input type="text" class="llm-config-input" bind:value={workerConfigs[workerModelTab].model} placeholder="claude-3-5-sonnet-20241022"
                       onfocus={(e) => { if (modelLists[workerModelTab]?.length > 0) openModelDropdown(workerModelTab, e.currentTarget); }}
@@ -1889,25 +1907,25 @@
                   </div>
                 </div>
                 <div class="llm-config-field">
-                  <label class="llm-config-label">Provider</label>
+                  <label class="llm-config-label">{i18n.t('settings.model.field.provider')}</label>
                   <select class="llm-config-select" bind:value={workerConfigs[workerModelTab].provider}>
-                    <option value="openai">OpenAI</option>
-                    <option value="anthropic">Anthropic</option>
+                    <option value="openai">{i18n.t('settings.model.provider.openai')}</option>
+                    <option value="anthropic">{i18n.t('settings.model.provider.anthropic')}</option>
                   </select>
                 </div>
                 {#if workerConfigs[workerModelTab].provider === 'openai'}
                 <div class="llm-config-field">
-                  <label class="llm-config-label">Level</label>
+                  <label class="llm-config-label">{i18n.t('settings.model.field.level')}</label>
                   <select class="llm-config-select" bind:value={workerConfigs[workerModelTab].reasoningEffort}>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
+                    <option value="low">{i18n.t('settings.model.reasoning.low')}</option>
+                    <option value="medium">{i18n.t('settings.model.reasoning.medium')}</option>
+                    <option value="high">{i18n.t('settings.model.reasoning.high')}</option>
                   </select>
                 </div>
                 {/if}
                 <div class="llm-config-field inline-toggle">
-                  <label class="llm-config-label">Thinking</label>
-                  <button type="button" class="llm-config-toggle-btn" title={workerConfigs[workerModelTab].thinking ? '关闭思考' : '开启思考'} onclick={() => workerConfigs[workerModelTab].thinking = !workerConfigs[workerModelTab].thinking}>
+                  <label class="llm-config-label">{i18n.t('settings.model.field.thinking')}</label>
+                  <button type="button" class="llm-config-toggle-btn" title={workerConfigs[workerModelTab].thinking ? i18n.t('settings.model.disableThinking') : i18n.t('settings.model.enableThinking')} onclick={() => workerConfigs[workerModelTab].thinking = !workerConfigs[workerModelTab].thinking}>
                     <span class="toggle-switch" class:active={workerConfigs[workerModelTab].thinking}></span>
                   </button>
                 </div>
@@ -1922,12 +1940,12 @@
                 >
                   {#if saveStatus[workerModelTab] === 'saving'}
                     <Icon name="refresh" size={14} />
-                    保存中...
+                    {i18n.t('settings.model.saving')}
                   {:else if saveStatus[workerModelTab] === 'saved'}
                     <Icon name="check" size={14} />
-                    已保存
+                    {i18n.t('settings.model.saved')}
                   {:else}
-                    保存配置
+                    {i18n.t('settings.model.saveConfig')}
                   {/if}
                 </button>
                 <button
@@ -1940,16 +1958,16 @@
                 >
                   {#if testStatus[workerModelTab] === 'testing'}
                     <Icon name="refresh" size={14} />
-                    测试中...
+                    {i18n.t('settings.model.testing')}
                   {:else if testStatus[workerModelTab] === 'success'}
                     <Icon name="check" size={14} />
-                    连接成功
+                    {i18n.t('settings.model.testSuccess')}
                   {:else if testStatus[workerModelTab] === 'error'}
                     <Icon name="close" size={14} />
-                    连接失败
+                    {i18n.t('settings.model.testFailed')}
                   {:else}
                     <Icon name="check" size={14} />
-                    测试连接
+                    {i18n.t('settings.model.testConnection')}
                   {/if}
                 </button>
               </div>
@@ -1961,18 +1979,18 @@
         <!-- Worker 分工配置 -->
         <div class="settings-section">
           <div class="settings-section-header">
-            <div class="settings-section-title">Worker 分工配置</div>
+            <div class="settings-section-title">{i18n.t('settings.profile.workerAssignment')}</div>
           </div>
-          <div class="settings-section-desc">配置存储：<code>~/.magi/worker-assignments.json</code></div>
+          <div class="settings-section-desc">{i18n.t('settings.profile.configStorage')}<code>~/.magi/worker-assignments.json</code></div>
           <div class="profile-categories-grid">
             {#each categoryOrder as category}
               {#if categoryLabels[category]}
                 <div class="profile-category-row">
                   <div class="profile-category-label-group">
-                    <span class="profile-category-label">{categoryLabels[category]}</span>
+                    <span class="profile-category-label">{categoryLabels[category]()}</span>
                   <button
                     class="profile-guidance-btn"
-                    aria-label="查看分类指导"
+                    aria-label={i18n.t('settings.profile.viewGuidance')}
                     aria-expanded={openGuidanceCategory === category}
                     onmouseenter={(event) => showGuidance(category, event)}
                     onmousemove={(event) => moveGuidance(category, event)}
@@ -1986,9 +2004,9 @@
                   </button>
                 </div>
                 <select class="profile-category-select" bind:value={taskCategories[category]}>
-                  <option value="claude">Claude</option>
-                    <option value="codex">Codex</option>
-                    <option value="gemini">Gemini</option>
+                  <option value="claude">{i18n.t('settings.model.worker.claude')}</option>
+                    <option value="codex">{i18n.t('settings.model.worker.codex')}</option>
+                    <option value="gemini">{i18n.t('settings.model.worker.gemini')}</option>
                   </select>
               </div>
               {/if}
@@ -2008,17 +2026,17 @@
               </div>
               <div class="profile-guidance-badges">
                 <span class="profile-badge priority-{categoryGuidance[guidancePopover.category].priority}">
-                  优先级: {categoryGuidance[guidancePopover.category].priority}
+                  {i18n.t('settings.profile.priority', { level: categoryGuidance[guidancePopover.category].priority })}
                 </span>
                 <span class="profile-badge risk-{categoryGuidance[guidancePopover.category].riskLevel}">
-                  风险: {categoryGuidance[guidancePopover.category].riskLevel}
+                  {i18n.t('settings.profile.risk', { level: categoryGuidance[guidancePopover.category].riskLevel })}
                 </span>
               </div>
             </div>
             <div class="profile-guidance-desc">{categoryGuidance[guidancePopover.category].description}</div>
             <div class="profile-guidance-columns">
               <div class="profile-guidance-block">
-                <div class="profile-guidance-label">专注领域</div>
+                <div class="profile-guidance-label">{i18n.t('settings.profile.focusArea')}</div>
                 <ul class="profile-guidance-listing">
                   {#each categoryGuidance[guidancePopover.category].guidance.focus as item}
                     <li>{item}</li>
@@ -2026,7 +2044,7 @@
                 </ul>
               </div>
               <div class="profile-guidance-block">
-                <div class="profile-guidance-label">行为约束</div>
+                <div class="profile-guidance-label">{i18n.t('settings.profile.constraints')}</div>
                 <ul class="profile-guidance-listing">
                   {#each categoryGuidance[guidancePopover.category].guidance.constraints as item}
                     <li>{item}</li>
@@ -2040,21 +2058,21 @@
         <!-- 全局用户规则 -->
         <div class="settings-section">
           <div class="settings-section-header">
-            <div class="settings-section-title">用户规则（全局）</div>
+            <div class="settings-section-title">{i18n.t('settings.profile.userRules')}</div>
           </div>
-          <div class="settings-section-desc">将作为系统级约束注入到编排者与所有 Worker</div>
+          <div class="settings-section-desc">{i18n.t('settings.profile.userRulesDesc')}</div>
           <div class="profile-editor">
             <div class="profile-field">
               <textarea
                 class="profile-textarea user-rules-textarea"
                 bind:value={userRules}
-                placeholder="例如：\n- 优先使用 TypeScript 严格类型\n- 修改前先确认依赖关系\n- 输出必须包含变更摘要"
+                placeholder={i18n.t('settings.profile.userRulesPlaceholder')}
               ></textarea>
             </div>
           </div>
         </div>
         <div class="profile-save-footer">
-          <div class="profile-save-hint">保存将同时影响 Worker 分工与全局用户规则</div>
+          <div class="profile-save-hint">{i18n.t('settings.profile.saveHint')}</div>
           <div class="profile-save-actions">
             <button
               class="settings-btn secondary"
@@ -2064,15 +2082,15 @@
             >
               {#if profileResetStatus === 'saving'}
                 <Icon name="refresh" size={14} />
-                处理中...
+                {i18n.t('settings.profile.processing')}
               {:else if profileResetStatus === 'saved'}
                 <Icon name="check" size={14} />
-                已重置
+                {i18n.t('settings.profile.resetDone')}
               {:else if profileResetStatus === 'error'}
                 <Icon name="close" size={14} />
-                重置失败
+                {i18n.t('settings.profile.resetFailed')}
               {:else}
-                重置全部配置
+                {i18n.t('settings.profile.resetAll')}
               {/if}
             </button>
             <button
@@ -2084,15 +2102,15 @@
             >
               {#if profileSaveStatus === 'saving'}
                 <Icon name="refresh" size={14} />
-                保存中...
+                {i18n.t('settings.profile.savingProfile')}
               {:else if profileSaveStatus === 'saved'}
                 <Icon name="check" size={14} />
-                已保存
+                {i18n.t('settings.profile.savedProfile')}
               {:else if profileSaveStatus === 'error'}
                 <Icon name="close" size={14} />
-                保存失败
+                {i18n.t('settings.profile.saveFailed')}
               {:else}
-                保存全部配置
+                {i18n.t('settings.profile.saveAll')}
               {/if}
             </button>
           </div>
@@ -2102,19 +2120,19 @@
         <!-- MCP 工具 -->
         <div class="settings-section">
           <div class="settings-section-header">
-            <div class="settings-section-title">MCP 工具</div>
+            <div class="settings-section-title">{i18n.t('settings.tools.mcpTools')}</div>
             <button class="settings-btn primary" onclick={() => openMCPDialog(null)}>
               <Icon name="plus" size={14} />
-              <span>添加服务器</span>
+              <span>{i18n.t('settings.tools.addServer')}</span>
             </button>
           </div>
-          <div class="settings-section-desc">通过 JSON 配置 MCP 服务器，自动解析和使用工具</div>
+          <div class="settings-section-desc">{i18n.t('settings.tools.mcpDesc')}</div>
           <div class="mcp-server-list">
             {#if mcpServers.length === 0}
               <div class="empty-state">
                 <Icon name="tools" size={48} />
-                <p>暂无 MCP 服务器</p>
-                <p class="empty-state-hint">点击"添加服务器"开始配置</p>
+                <p>{i18n.t('settings.tools.noMcpServer')}</p>
+                <p class="empty-state-hint">{i18n.t('settings.tools.noMcpServerHint')}</p>
               </div>
             {:else}
               {#each mcpServers as server (server.id)}
@@ -2127,7 +2145,7 @@
                     </div>
                     <div class="mcp-server-actions">
                       <span class="mcp-server-badge" class:enabled={server.enabled} class:disabled={!server.enabled}>
-                        {server.enabled ? '已启用' : '已禁用'}
+                        {server.enabled ? i18n.t('settings.tools.enabled') : i18n.t('settings.tools.disabledLabel')}
                       </span>
                       <span
                         class="mcp-server-badge mcp-server-health-badge"
@@ -2142,15 +2160,15 @@
                       <span onclick={(e) => e.stopPropagation()}>
                         <Toggle
                           checked={server.enabled}
-                          title={server.enabled ? '点击禁用' : '点击启用'}
+                          title={server.enabled ? i18n.t('settings.tools.clickToDisable') : i18n.t('settings.tools.clickToEnable')}
                           onchange={() => toggleMCPServer(server.id, server.enabled)}
                         />
                       </span>
-                      <button class="btn-icon btn-icon--sm" title="编辑"
+                      <button class="btn-icon btn-icon--sm" title={i18n.t('settings.tools.edit')}
                         onclick={(e) => { e.stopPropagation(); openMCPDialog(server); }}>
                         <Icon name="edit" size={14} />
                       </button>
-                      <button class="btn-icon btn-icon--sm btn-icon--danger" title="删除"
+                      <button class="btn-icon btn-icon--sm btn-icon--danger" title={i18n.t('settings.tools.delete')}
                         onclick={(e) => { e.stopPropagation(); deleteMCPServer(server.id); }}>
                         <Icon name="trash" size={14} />
                       </button>
@@ -2162,22 +2180,22 @@
                   {#if mcpExpandedServer === server.id}
                     <div class="mcp-tools-panel">
                       <div class="mcp-server-runtime">
-                        <span>状态: {getMCPHealthLabel(server)}</span>
-                        <span>重连次数: {server.reconnectAttempts || 0}</span>
+                        <span>{i18n.t('settings.tools.runtimeStatus', { status: getMCPHealthLabel(server) })}</span>
+                        <span>{i18n.t('settings.tools.reconnectCount', { count: server.reconnectAttempts || 0 })}</span>
                         {#if server.error}
-                          <span class="mcp-server-runtime-error" title={server.error}>最近错误: {server.error}</span>
+                          <span class="mcp-server-runtime-error" title={server.error}>{i18n.t('settings.tools.lastError', { error: server.error })}</span>
                         {/if}
                       </div>
                       <div class="mcp-tools-header">
-                        <span>工具列表 {mcpServerTools[server.id]?.length ? `(${mcpServerTools[server.id].length})` : ''}</span>
-                        <button class="btn-icon btn-icon--sm" class:refreshing={mcpRefreshingServers.has(server.id)} title="刷新工具"
+                        <span>{i18n.t('settings.tools.toolList')} {mcpServerTools[server.id]?.length ? `(${mcpServerTools[server.id].length})` : ''}</span>
+                        <button class="btn-icon btn-icon--sm" class:refreshing={mcpRefreshingServers.has(server.id)} title={i18n.t('settings.tools.refreshTools')}
                           onclick={() => refreshMCPTools(server.id)} disabled={mcpRefreshingServers.has(server.id)}>
                           <Icon name="refresh" size={14} />
                         </button>
                       </div>
                       <div class="mcp-tools-list">
                         {#if mcpRefreshingServers.has(server.id)}
-                          <div class="mcp-tools-empty">加载中...</div>
+                          <div class="mcp-tools-empty">{i18n.t('settings.tools.loading')}</div>
                         {:else if mcpServerTools[server.id] && mcpServerTools[server.id].length > 0}
                           {#each mcpServerTools[server.id] as tool, toolIndex}
                             {@const toolKey = `${server.id}-${toolIndex}`}
@@ -2186,7 +2204,7 @@
                               <div class="mcp-tool-row">
                                 <div class="mcp-tool-name">{tool.name}</div>
                                 {#if tool.description}
-                                  <button class="mcp-tool-desc-btn" title="查看描述" onclick={(e) => toggleMCPToolDesc(toolKey, e)}>
+                                  <button class="mcp-tool-desc-btn" title={i18n.t('settings.tools.viewDesc')} onclick={(e) => toggleMCPToolDesc(toolKey, e)}>
                                     <Icon name="info" size={14} />
                                   </button>
                                 {/if}
@@ -2198,7 +2216,7 @@
                             </div>
                           {/each}
                         {:else}
-                          <div class="mcp-tools-empty">暂无工具，点击刷新按钮加载</div>
+                          <div class="mcp-tools-empty">{i18n.t('settings.tools.noToolsHint')}</div>
                         {/if}
                       </div>
                     </div>
@@ -2212,31 +2230,31 @@
         <!-- Claude Skills 工具 -->
         <div class="settings-section">
           <div class="settings-section-header">
-            <div class="settings-section-title">Claude Skills 工具</div>
+            <div class="settings-section-title">{i18n.t('settings.tools.claudeSkills')}</div>
             <div class="settings-btn-group">
               <button class="settings-btn primary" onclick={() => openSkillLibraryDialog()}>
                 <Icon name="plus" size={14} />
-                <span>安装 Skill</span>
+                <span>{i18n.t('settings.tools.installSkill')}</span>
               </button>
               {#if skills.length > 0}
                 <button class="settings-btn secondary" onclick={() => updateAllSkills()} disabled={updatingAllSkills}>
                   <Icon name="refresh" size={14} />
-                  <span>{updatingAllSkills ? '更新中...' : '全部更新'}</span>
+                  <span>{updatingAllSkills ? i18n.t('settings.tools.updatingAll') : i18n.t('settings.tools.updateAll')}</span>
                 </button>
               {/if}
               <button class="settings-btn secondary" onclick={() => openRepoDialog()}>
                 <Icon name="grid" size={14} />
-                <span>管理技能仓库</span>
+                <span>{i18n.t('settings.tools.manageRepos')}</span>
               </button>
             </div>
           </div>
-          <div class="settings-section-desc">通过 Skill 库安装的技能工具，由 Anthropic 提供</div>
+          <div class="settings-section-desc">{i18n.t('settings.tools.skillsDesc')}</div>
           <div class="skills-tool-list">
             {#if skills.length === 0}
               <div class="empty-state">
                 <Icon name="tools" size={48} />
-                <p>暂无已安装的 Skill</p>
-                <p class="empty-state-hint">点击"安装 Skill"从库中安装</p>
+                <p>{i18n.t('settings.tools.noSkills')}</p>
+                <p class="empty-state-hint">{i18n.t('settings.tools.noSkillsHint')}</p>
               </div>
             {:else}
               {#each skills as skill}
@@ -2247,11 +2265,11 @@
                   </div>
                   <div class="skill-actions">
                     <span class="skill-source-badge" class:custom={skill.source === 'custom'} class:instruction={skill.source === 'instruction'}>
-                      {skill.source === 'custom' ? '自定义' : 'Instruction'}
+                      {skill.source === 'custom' ? i18n.t('settings.tools.custom') : 'Instruction'}
                     </span>
                     <button
                       class="btn-icon btn-icon--sm"
-                      title="更新"
+                      title={i18n.t('settings.tools.update')}
                       disabled={updatingSkills.has(skill.name) || updatingAllSkills}
                       onclick={() => updateSkill(skill.name)}
                     >
@@ -2261,7 +2279,7 @@
                         <Icon name="refresh" size={14} />
                       {/if}
                     </button>
-                    <button class="btn-icon btn-icon--sm btn-icon--danger" title="删除" onclick={() => deleteSkill(skill)}>
+                    <button class="btn-icon btn-icon--sm btn-icon--danger" title={i18n.t('settings.tools.delete')} onclick={() => deleteSkill(skill)}>
                       <Icon name="trash" size={14} />
                     </button>
                   </div>
@@ -2273,18 +2291,18 @@
 
         <!-- 终端工具 -->
         <div class="settings-section">
-          <div class="settings-section-title">终端工具</div>
-          <div class="settings-section-desc">在 VS Code 终端中执行命令，提供可视化的执行过程</div>
+          <div class="settings-section-title">{i18n.t('settings.tools.terminalTools')}</div>
+          <div class="settings-section-desc">{i18n.t('settings.tools.terminalDesc')}</div>
           <div class="builtin-tool-list">
             <div class="builtin-tool-item">
               <div class="builtin-tool-icon">
                 <Icon name="tools" size={20} />
               </div>
               <div class="builtin-tool-info">
-                <div class="builtin-tool-name">VSCode 终端执行器</div>
-                <div class="builtin-tool-desc">在 VS Code 终端中可视化执行命令</div>
+                <div class="builtin-tool-name">{i18n.t('settings.tools.vscodeTerminal')}</div>
+                <div class="builtin-tool-desc">{i18n.t('settings.tools.vscodeTerminalDesc')}</div>
               </div>
-              <div class="builtin-tool-badge enabled">已启用</div>
+              <div class="builtin-tool-badge enabled">{i18n.t('settings.tools.enabledBadge')}</div>
             </div>
           </div>
         </div>
@@ -2304,12 +2322,12 @@
       </div>
       <div class="modal-body">
         <div class="form-field">
-          <input type="text" bind:value={inputDialogValue} placeholder="请输入内容...">
+          <input type="text" bind:value={inputDialogValue} placeholder={i18n.t('settings.dialog.inputPlaceholder')}>
         </div>
       </div>
       <div class="modal-footer">
-        <button class="settings-btn secondary" onclick={cancelInputDialog}>取消</button>
-        <button class="settings-btn primary" onclick={confirmInputDialog}>确定</button>
+        <button class="settings-btn secondary" onclick={cancelInputDialog}>{i18n.t('settings.dialog.cancel')}</button>
+        <button class="settings-btn primary" onclick={confirmInputDialog}>{i18n.t('settings.dialog.confirm')}</button>
       </div>
     </div>
   </div>
@@ -2322,24 +2340,24 @@
     <!-- svelte-ignore a11y_no_static_element_interactions a11y_interactive_supports_focus -->
     <div class="modal-dialog" onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
-        <h3>{mcpDialogIsEdit ? '编辑 MCP 服务器' : '添加 MCP 服务器'}</h3>
+        <h3>{mcpDialogIsEdit ? i18n.t('settings.mcp.editTitle') : i18n.t('settings.mcp.addTitle')}</h3>
         <button class="modal-close" onclick={closeMCPDialog}>×</button>
       </div>
       <div class="modal-body">
         <div class="form-field">
-          <label for="mcp-json">MCP 服务器 JSON</label>
-          <textarea id="mcp-json" rows="12" placeholder="粘贴 MCP JSON 配置" bind:value={mcpDialogJson} oninput={() => mcpDialogError = ''}></textarea>
+          <label for="mcp-json">{i18n.t('settings.mcp.jsonLabel')}</label>
+          <textarea id="mcp-json" rows="12" placeholder={i18n.t('settings.mcp.jsonPlaceholder')} bind:value={mcpDialogJson} oninput={() => mcpDialogError = ''}></textarea>
           {#if mcpDialogError}
             <div class="form-error">{mcpDialogError}</div>
           {:else}
             <div class="form-help">
-              支持 stdio 和 HTTP 两种格式。stdio: {'{'} "mcpServers": {'{'} "name": {'{'} "command": "...", "args": [...] {'}'} {'}'} {'}'}；HTTP: {'{'} "mcpServers": {'{'} "name": {'{'} "url": "https://...", "headers": {'{'} ... {'}'} {'}'} {'}'} {'}'}
+              {i18n.t('settings.mcp.jsonHelp')} stdio: {'{'} "mcpServers": {'{'} "name": {'{'} "command": "...", "args": [...] {'}'} {'}'} {'}'}；HTTP: {'{'} "mcpServers": {'{'} "name": {'{'} "url": "https://...", "headers": {'{'} ... {'}'} {'}'} {'}'} {'}'}
             </div>
           {/if}
         </div>
       </div>
       <div class="modal-footer">
-        <button class="settings-btn secondary" onclick={closeMCPDialog}>取消</button>
+        <button class="settings-btn secondary" onclick={closeMCPDialog}>{i18n.t('settings.dialog.cancel')}</button>
         <button
           class="settings-btn primary"
           class:saving={saveStatus.mcp === 'saving'}
@@ -2349,12 +2367,12 @@
         >
           {#if saveStatus.mcp === 'saving'}
             <Icon name="refresh" size={14} />
-            保存中...
+            {i18n.t('settings.mcp.saving')}
           {:else if saveStatus.mcp === 'saved'}
             <Icon name="check" size={14} />
-            已保存
+            {i18n.t('settings.mcp.saved')}
           {:else}
-            保存
+            {i18n.t('settings.mcp.save')}
           {/if}
         </button>
       </div>
@@ -2369,31 +2387,31 @@
     <!-- svelte-ignore a11y_no_static_element_interactions a11y_interactive_supports_focus -->
     <div class="modal-dialog modal-dialog-lg" onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
-        <h3>管理技能仓库</h3>
+        <h3>{i18n.t('settings.repo.title')}</h3>
         <button class="modal-close" onclick={closeRepoDialog}>×</button>
       </div>
       <div class="modal-body">
         <div class="repo-add-section">
           <div class="repo-add-form">
             <div class="form-field" style="flex: 1; margin-bottom: 0;">
-              <label for="repo-url">仓库 URL</label>
-              <input type="text" id="repo-url" placeholder="https://example.com/skills" bind:value={repoAddUrl}>
+              <label for="repo-url">{i18n.t('settings.repo.urlLabel')}</label>
+              <input type="text" id="repo-url" placeholder={i18n.t('settings.repo.urlPlaceholder')} bind:value={repoAddUrl}>
             </div>
             <button class="settings-btn primary" onclick={addRepository} disabled={repoAddLoading}>
               <Icon name="plus" size={14} />
-              <span>{repoAddLoading ? '添加中' : '添加'}</span>
+              <span>{repoAddLoading ? i18n.t('settings.repo.adding') : i18n.t('settings.repo.add')}</span>
             </button>
           </div>
         </div>
-        <div class="repo-list-title">已添加的仓库</div>
+        <div class="repo-list-title">{i18n.t('settings.repo.addedRepos')}</div>
         <div class="repo-manage-list">
           {#if repositoriesLoading}
             <div class="loading-state">
               <Icon name="refresh" size={24} />
-              <span>加载中...</span>
+              <span>{i18n.t('settings.repo.loading')}</span>
             </div>
           {:else if repositories.length === 0}
-            <div class="empty-state-sm">暂无仓库</div>
+            <div class="empty-state-sm">{i18n.t('settings.repo.noRepos')}</div>
           {:else}
             {#each repositories as repo (repo.id)}
               <div class="repo-item">
@@ -2401,14 +2419,14 @@
                   <div class="repo-name">{repo.name || repo.url}</div>
                   <div class="repo-url">{repo.url}</div>
                   {#if repo.skillCount}
-                    <div class="repo-meta">{repo.skillCount} 个技能</div>
+                    <div class="repo-meta">{i18n.t('settings.repo.skillCount', { count: repo.skillCount })}</div>
                   {/if}
                 </div>
                 <div class="repo-actions">
-                  <button class="btn-icon btn-icon--sm" title="刷新" onclick={() => refreshRepository(repo.id)}>
+                  <button class="btn-icon btn-icon--sm" title={i18n.t('settings.repo.refresh')} onclick={() => refreshRepository(repo.id)}>
                     <Icon name="refresh" size={14} />
                   </button>
-                  <button class="btn-icon btn-icon--sm" title="删除" onclick={() => deleteRepository(repo.id)}>
+                  <button class="btn-icon btn-icon--sm" title={i18n.t('settings.tools.delete')} onclick={() => deleteRepository(repo.id)}>
                     <Icon name="close" size={14} />
                   </button>
                 </div>
@@ -2418,7 +2436,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="settings-btn secondary" onclick={closeRepoDialog}>关闭</button>
+        <button class="settings-btn secondary" onclick={closeRepoDialog}>{i18n.t('settings.repo.close')}</button>
       </div>
     </div>
   </div>
@@ -2431,20 +2449,20 @@
     <!-- svelte-ignore a11y_no_static_element_interactions a11y_interactive_supports_focus -->
     <div class="modal-dialog modal-dialog-lg" onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
-        <h3>Skill 库</h3>
+        <h3>{i18n.t('settings.skillLibrary.title')}</h3>
         <button class="modal-close" onclick={closeSkillLibraryDialog}>×</button>
       </div>
       <div class="modal-body">
         <div class="skill-library-search">
           <div class="skill-library-search-row">
-            <input type="text" placeholder="搜索 Skill..." bind:value={skillSearchQuery}>
+            <input type="text" placeholder={i18n.t('settings.skillLibrary.searchPlaceholder')} bind:value={skillSearchQuery}>
             <button class="settings-btn secondary skill-library-import-btn" onclick={installLocalSkill} disabled={localSkillInstalling}>
               {#if localSkillInstalling}
                 <Icon name="refresh" size={14} />
-                导入中...
+                {i18n.t('settings.skillLibrary.importing')}
               {:else}
                 <Icon name="plus" size={14} />
-                本地导入
+                {i18n.t('settings.skillLibrary.localImport')}
               {/if}
             </button>
           </div>
@@ -2453,7 +2471,7 @@
           {#if skillLibraryFailedRepositories.length > 0}
             <div class="skill-library-warning">
               <div class="skill-library-warning-title">
-                有 {skillLibraryFailedRepositories.length} 个仓库加载失败
+                {i18n.t('settings.skillLibrary.failedRepos', { count: skillLibraryFailedRepositories.length })}
               </div>
               <div class="skill-library-warning-list">
                 {#each skillLibraryFailedRepositories as repo}
@@ -2470,18 +2488,18 @@
           {#if skillLibraryLoading}
             <div class="loading-state">
               <Icon name="refresh" size={32} />
-              <span>正在加载技能列表...</span>
+              <span>{i18n.t('settings.skillLibrary.loadingSkills')}</span>
             </div>
           {:else if filteredLibrarySkills.length === 0}
             <div class="empty-state">
               <Icon name="tools" size={48} />
-              <p>暂无可用的 Skill</p>
-              <p class="empty-state-hint">请先添加 Skill 仓库</p>
+              <p>{i18n.t('settings.skillLibrary.noSkillsAvailable')}</p>
+              <p class="empty-state-hint">{i18n.t('settings.skillLibrary.noSkillsHint')}</p>
             </div>
           {:else}
             {#each Object.entries(skillsByRepo) as [_, repoData]}
               <div class="skill-repo-group">
-                <div class="skill-repo-title">{repoData.name} ({repoData.skills.length} 个技能)</div>
+                <div class="skill-repo-title">{i18n.t('settings.skillLibrary.repoSkillCount', { name: repoData.name, count: repoData.skills.length })}</div>
                 {#each repoData.skills as skill}
                   <div class="skill-library-item">
                     <div class="skill-library-icon">
@@ -2492,9 +2510,9 @@
                       <div class="skill-library-desc" title={skill.description || ''}>{skill.description || ''}</div>
                       {#if skill.author || skill.version || skill.category}
                         <div class="skill-library-meta">
-                          {#if skill.author}<span class="skill-library-meta-item">作者: {skill.author}</span>{/if}
-                          {#if skill.version}<span class="skill-library-meta-item">版本: {skill.version}</span>{/if}
-                          {#if skill.category}<span class="skill-library-meta-item">分类: {skill.category}</span>{/if}
+                          {#if skill.author}<span class="skill-library-meta-item">{i18n.t('settings.skillLibrary.author', { name: skill.author })}</span>{/if}
+                          {#if skill.version}<span class="skill-library-meta-item">{i18n.t('settings.skillLibrary.version', { version: skill.version })}</span>{/if}
+                          {#if skill.category}<span class="skill-library-meta-item">{i18n.t('settings.skillLibrary.category', { category: skill.category })}</span>{/if}
                         </div>
                       {/if}
                     </div>
@@ -2508,11 +2526,11 @@
                       >
                         {#if installingSkills.has(skill.fullName)}
                           <Icon name="refresh" size={14} />
-                          安装中...
+                          {i18n.t('settings.skillLibrary.installing')}
                         {:else if skill.installed}
-                          已安装
+                          {i18n.t('settings.skillLibrary.installed')}
                         {:else}
-                          安装
+                          {i18n.t('settings.skillLibrary.install')}
                         {/if}
                       </button>
                     </div>
@@ -2524,7 +2542,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="settings-btn secondary" onclick={closeSkillLibraryDialog}>关闭</button>
+        <button class="settings-btn secondary" onclick={closeSkillLibraryDialog}>{i18n.t('settings.skillLibrary.close')}</button>
       </div>
     </div>
   </div>
@@ -2537,16 +2555,16 @@
     <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
     <div class="modal-dialog modal-dialog--sm" role="dialog" aria-modal="true" tabindex="-1">
       <div class="modal-header">
-        <div class="modal-title">确认重置</div>
+        <div class="modal-title">{i18n.t('settings.resetConfirm.title')}</div>
         <button class="modal-close" onclick={cancelResetStats}>×</button>
       </div>
       <div class="modal-body">
-        <p style="margin: 0; color: var(--foreground);">确定要重置所有 Token 统计数据吗？</p>
-        <p style="margin: var(--space-2) 0 0; color: var(--foreground-muted); font-size: var(--text-sm);">此操作不可撤销。</p>
+        <p style="margin: 0; color: var(--foreground);">{i18n.t('settings.resetConfirm.message')}</p>
+        <p style="margin: var(--space-2) 0 0; color: var(--foreground-muted); font-size: var(--text-sm);">{i18n.t('settings.resetConfirm.irreversible')}</p>
       </div>
       <div class="modal-footer">
-        <button class="settings-btn secondary" onclick={cancelResetStats}>取消</button>
-        <button class="settings-btn primary" onclick={confirmResetStats}>确认重置</button>
+        <button class="settings-btn secondary" onclick={cancelResetStats}>{i18n.t('settings.resetConfirm.cancel')}</button>
+        <button class="settings-btn primary" onclick={confirmResetStats}>{i18n.t('settings.resetConfirm.confirm')}</button>
       </div>
     </div>
   </div>
@@ -2566,8 +2584,8 @@
         <p style="margin: 0; color: var(--foreground);">{confirmDialogMessage}</p>
       </div>
       <div class="modal-footer">
-        <button class="settings-btn secondary" onclick={handleConfirmNo}>取消</button>
-        <button class="settings-btn primary" onclick={handleConfirmYes}>确认</button>
+        <button class="settings-btn secondary" onclick={handleConfirmNo}>{i18n.t('settings.confirmDialog.cancel')}</button>
+        <button class="settings-btn primary" onclick={handleConfirmYes}>{i18n.t('settings.confirmDialog.confirm')}</button>
       </div>
     </div>
   </div>
@@ -2613,6 +2631,41 @@
     padding: var(--space-4) var(--space-5);
     border-bottom: 1px solid var(--border);
     background: var(--surface-2);
+    gap: var(--space-3);
+  }
+
+  .locale-selector {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    margin-left: auto;
+  }
+
+  .locale-btn {
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    color: var(--foreground-muted);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+  }
+
+  .locale-btn:hover {
+    color: var(--foreground);
+    background: var(--surface-3);
+  }
+
+  .locale-btn.active {
+    background: var(--primary);
+    color: var(--primary-foreground, #fff);
+  }
+
+  .locale-btn + .locale-btn {
+    border-left: 1px solid var(--border);
   }
 
   .settings-title {

@@ -2,6 +2,7 @@
   import { setCurrentBottomTab } from '../stores/messages.svelte';
   import Icon from './Icon.svelte';
   import type { IconName } from '../lib/icons';
+  import { i18n } from '../stores/i18n.svelte';
 
   // Worker 状态类型（与 MessageHub subTaskCard 状态值对齐）
   type WorkerStatus = 'pending' | 'running' | 'completed' | 'failed' | 'stopped' | 'skipped';
@@ -40,13 +41,13 @@
     spinning?: boolean;
   }
 
-  const statusBadgeMap: Record<WorkerStatus, StatusBadgeConfig> = {
-    pending: { colorVar: '--warning', icon: 'hourglass', label: '排队中' },
-    running: { colorVar: '--info', icon: 'loader', label: '执行中', spinning: true },
-    completed: { colorVar: '--success', icon: 'check', label: '完成' },
-    failed: { colorVar: '--error', icon: 'x', label: '失败' },
-    stopped: { colorVar: '--warning', icon: 'stop', label: '已停止' },
-    skipped: { colorVar: '--foreground-muted', icon: 'skip-forward', label: '已跳过' },
+  const statusBadgeMap: Record<WorkerStatus, Omit<StatusBadgeConfig, 'label'> & { labelKey: string }> = {
+    pending: { colorVar: '--warning', icon: 'hourglass', labelKey: 'subTaskSummaryCard.status.pending' },
+    running: { colorVar: '--info', icon: 'loader', labelKey: 'subTaskSummaryCard.status.running', spinning: true },
+    completed: { colorVar: '--success', icon: 'check', labelKey: 'subTaskSummaryCard.status.completed' },
+    failed: { colorVar: '--error', icon: 'x', labelKey: 'subTaskSummaryCard.status.failed' },
+    stopped: { colorVar: '--warning', icon: 'stop', labelKey: 'subTaskSummaryCard.status.stopped' },
+    skipped: { colorVar: '--foreground-muted', icon: 'skip-forward', labelKey: 'subTaskSummaryCard.status.skipped' },
   };
 
   interface Props {
@@ -65,7 +66,7 @@
 
   // 优化 executor 显示：支持更多来源字段，并统一使用中文
   const rawExecutor = $derived(card.executor || card.agent || card.worker || '');
-  const executor = $derived(rawExecutor || '编排者');
+  const executor = $derived(rawExecutor || i18n.t('subTaskSummaryCard.defaultExecutor'));
 
   // Worker 类型和颜色映射
   type WorkerType = 'claude' | 'codex' | 'gemini' | 'orchestrator' | 'default';
@@ -74,7 +75,7 @@
     claude: { colorVar: '--color-claude', icon: '🧠', label: 'Claude' },
     codex: { colorVar: '--color-codex', icon: '⚡', label: 'Codex' },
     gemini: { colorVar: '--color-gemini', icon: '✨', label: 'Gemini' },
-    orchestrator: { colorVar: '--color-orchestrator', icon: '🎯', label: '编排者' },
+    orchestrator: { colorVar: '--color-orchestrator', icon: '🎯', label: 'Orchestrator' },
     default: { colorVar: '--foreground-muted', icon: '🤖', label: 'Worker' },
   };
 
@@ -84,8 +85,7 @@
     if (lower.includes('claude')) return 'claude';
     if (lower.includes('codex')) return 'codex';
     if (lower.includes('gemini')) return 'gemini';
-    // 识别编排者相关的名称
-    if (lower.includes('编排') || lower.includes('orchestrator') || lower === 'unknown') return 'orchestrator';
+    if (lower.includes('orchestrator') || lower === 'unknown') return 'orchestrator';
     return 'default';
   }
 
@@ -136,7 +136,7 @@
   class:expanded={isExpanded}
   style="--worker-color: var({workerConfig.colorVar}); --status-color: var({statusConfig.colorVar})"
   onclick={handleCardClick}
-  title={isClickable ? `点击查看 ${workerConfig.label} 详情` : ''}
+  title={isClickable ? i18n.t('subTaskSummaryCard.clickToView', { workerLabel: workerConfig.label }) : ''}
 >
   <!-- 卡片头部：worker 图标 + 标题 + 状态 -->
   <div class="card-header">
@@ -144,10 +144,10 @@
       <span class="worker-icon">{workerConfig.icon}</span>
       <span class="worker-name">{executor}</span>
       {#if typeof card.waveIndex === 'number'}
-        <span class="wave-badge" title="Wave {card.waveIndex + 1}">W{card.waveIndex + 1}</span>
+        <span class="wave-badge" title={i18n.t('subTaskSummaryCard.waveTitle', { index: card.waveIndex + 1 })}>W{card.waveIndex + 1}</span>
       {/if}
       {#if card.isResumed}
-        <span class="resumed-badge" title="Session 已恢复">恢复</span>
+        <span class="resumed-badge" title={i18n.t('subTaskSummaryCard.sessionResumed')}>{i18n.t('subTaskSummaryCard.resumedBadge')}</span>
       {/if}
     </div>
     <div class="card-meta">
@@ -167,7 +167,7 @@
         <span class="status-icon" class:spinning={statusConfig.spinning}>
           <Icon name={statusConfig.icon} size={12} />
         </span>
-        <span class="status-text">{statusConfig.label}</span>
+        <span class="status-text">{i18n.t(statusConfig.labelKey)}</span>
       </span>
       {#if hasDetails && !readOnly}
         <span
@@ -176,7 +176,7 @@
           tabindex="0"
           onclick={toggleExpand}
           onkeydown={(e) => e.key === 'Enter' && toggleExpand(e as unknown as MouseEvent)}
-          title={isExpanded ? '收起详情' : '展开详情'}
+          title={isExpanded ? i18n.t('subTaskSummaryCard.collapseDetails') : i18n.t('subTaskSummaryCard.expandDetails')}
         >
           <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={14} />
         </span>
@@ -201,13 +201,13 @@
     {#if typeof card.toolCount === 'number'}
       <span class="stat-item">
         <Icon name="tool" size={12} />
-        {card.toolCount} 次调用
+        {i18n.t('subTaskSummaryCard.toolCallCount', { count: card.toolCount })}
       </span>
     {/if}
     {#if card.changes && card.changes.length > 0}
       <span class="stat-item">
         <Icon name="file" size={12} />
-        {card.changes.length} 文件变更
+        {i18n.t('subTaskSummaryCard.fileChangeCount', { count: card.changes.length })}
       </span>
     {/if}
   </div>
@@ -219,7 +219,7 @@
         <div class="detail-section">
           <div class="detail-title">
             <Icon name="file" size={12} />
-            文件变更
+            {i18n.t('subTaskSummaryCard.detail.fileChanges')}
           </div>
           <ul class="file-list">
             {#each card.changes as file, i (file || i)}
@@ -232,7 +232,7 @@
         <div class="detail-section">
           <div class="detail-title">
             <Icon name="check-circle" size={12} />
-            验证结果
+            {i18n.t('subTaskSummaryCard.detail.verificationResults')}
           </div>
           <ul class="verification-list">
             {#each card.verification as item, i (item || i)}
@@ -245,35 +245,35 @@
         <div class="detail-section">
           <div class="detail-title">
             <Icon name="shield" size={12} />
-            验证证据
+            {i18n.t('subTaskSummaryCard.detail.evidence')}
           </div>
           <div class="evidence-grid">
             {#if typeof card.evidence.commandsRun === 'number'}
               <div class="evidence-item">
-                <span class="evidence-label">命令执行</span>
-                <span class="evidence-value">{card.evidence.commandsRun} 次</span>
+                <span class="evidence-label">{i18n.t('subTaskSummaryCard.evidence.commandsRun')}</span>
+                <span class="evidence-value">{i18n.t('subTaskSummaryCard.evidence.commandsRunCount', { count: card.evidence.commandsRun })}</span>
               </div>
             {/if}
             {#if typeof card.evidence.testsPassed === 'boolean'}
               <div class="evidence-item">
-                <span class="evidence-label">测试</span>
+                <span class="evidence-label">{i18n.t('subTaskSummaryCard.evidence.tests')}</span>
                 <span class="evidence-value" class:success={card.evidence.testsPassed} class:error={!card.evidence.testsPassed}>
-                  {card.evidence.testsPassed ? '通过' : '失败'}
+                  {card.evidence.testsPassed ? i18n.t('subTaskSummaryCard.evidence.testsPassed') : i18n.t('subTaskSummaryCard.evidence.testsFailed')}
                 </span>
               </div>
             {/if}
             {#if typeof card.evidence.typeCheckPassed === 'boolean'}
               <div class="evidence-item">
-                <span class="evidence-label">类型检查</span>
+                <span class="evidence-label">{i18n.t('subTaskSummaryCard.evidence.typeCheck')}</span>
                 <span class="evidence-value" class:success={card.evidence.typeCheckPassed} class:error={!card.evidence.typeCheckPassed}>
-                  {card.evidence.typeCheckPassed ? '通过' : '失败'}
+                  {card.evidence.typeCheckPassed ? i18n.t('subTaskSummaryCard.evidence.typeCheckPassed') : i18n.t('subTaskSummaryCard.evidence.typeCheckFailed')}
                 </span>
               </div>
             {/if}
             {#if typeof card.evidence.filesChanged === 'number'}
               <div class="evidence-item">
-                <span class="evidence-label">文件变更</span>
-                <span class="evidence-value">{card.evidence.filesChanged} 个</span>
+                <span class="evidence-label">{i18n.t('subTaskSummaryCard.evidence.filesChanged')}</span>
+                <span class="evidence-value">{i18n.t('subTaskSummaryCard.evidence.filesChangedCount', { count: card.evidence.filesChanged })}</span>
               </div>
             {/if}
           </div>

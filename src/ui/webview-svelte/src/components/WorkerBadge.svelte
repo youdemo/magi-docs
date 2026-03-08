@@ -2,6 +2,7 @@
   import Icon from './Icon.svelte';
   import type { IconName } from '../lib/icons';
   import { vscode } from '../lib/vscode-bridge';
+  import { i18n } from '../stores/i18n.svelte';
 
   type WorkerType = 'orchestrator' | 'coder' | 'reviewer' | 'planner' | 'debugger' | 'claude' | 'codex' | 'gemini' | 'default';
   type WorkerStatus = 'idle' | 'running' | 'completed' | 'failed';
@@ -21,12 +22,12 @@
   }: Props = $props();
 
   // Worker 类型配置 - 使用 Icon 组件替代 emoji
-  const workerConfig: Record<WorkerType, { colorVar: string; icon: IconName; label: string }> = {
-    orchestrator: { colorVar: '--color-orchestrator', icon: 'target', label: '协调者' },
-    coder: { colorVar: '--color-codex', icon: 'code', label: '编码者' },
-    reviewer: { colorVar: '--color-claude', icon: 'search', label: '审查者' },
-    planner: { colorVar: '--color-gemini', icon: 'list', label: '规划者' },
-    debugger: { colorVar: '--color-claude', icon: 'bug', label: '调试者' },
+  const workerConfig: Record<WorkerType, { colorVar: string; icon: IconName; labelKey?: string; label?: string }> = {
+    orchestrator: { colorVar: '--color-orchestrator', icon: 'target', labelKey: 'workerBadge.role.orchestrator' },
+    coder: { colorVar: '--color-codex', icon: 'code', labelKey: 'workerBadge.role.coder' },
+    reviewer: { colorVar: '--color-claude', icon: 'search', labelKey: 'workerBadge.role.reviewer' },
+    planner: { colorVar: '--color-gemini', icon: 'list', labelKey: 'workerBadge.role.planner' },
+    debugger: { colorVar: '--color-claude', icon: 'bug', labelKey: 'workerBadge.role.debugger' },
     claude: { colorVar: '--color-claude', icon: 'brain', label: 'Claude' },
     codex: { colorVar: '--color-codex', icon: 'zap', label: 'Codex' },
     gemini: { colorVar: '--color-gemini', icon: 'sparkles', label: 'Gemini' },
@@ -34,11 +35,11 @@
   };
 
   // 状态配置
-  const statusConfig: Record<WorkerStatus, { color: string; text: string }> = {
-    idle: { color: 'var(--foreground-muted)', text: '空闲' },
-    running: { color: 'var(--info)', text: '运行中' },
-    completed: { color: 'var(--success)', text: '完成' },
-    failed: { color: 'var(--error)', text: '失败' }
+  const statusConfig: Record<WorkerStatus, { color: string; textKey: string }> = {
+    idle: { color: 'var(--foreground-muted)', textKey: 'workerBadge.status.idle' },
+    running: { color: 'var(--info)', textKey: 'workerBadge.status.running' },
+    completed: { color: 'var(--success)', textKey: 'workerBadge.status.completed' },
+    failed: { color: 'var(--error)', textKey: 'workerBadge.status.failed' }
   };
 
   // 获取 worker 配置
@@ -67,7 +68,7 @@
 <span
   class="worker-badge size-{size} worker-{worker.toLowerCase()}"
   style="--worker-color: var({config.colorVar})"
-  title="{config.label}{showStatus ? ` - ${statusInfo.text}` : ''}"
+  title="{config.labelKey ? i18n.t(config.labelKey) : config.label}{showStatus ? ` - ${i18n.t(statusInfo.textKey)}` : ''}"
 >
   <span class="worker-icon">
     <Icon name={config.icon} size={size === 'sm' ? 10 : size === 'md' ? 12 : 14} />
@@ -78,7 +79,7 @@
       {#if status === 'running'}
         <span class="status-dot running"></span>
       {/if}
-      {statusInfo.text}
+      {i18n.t(statusInfo.textKey)}
     </span>
   {/if}
 </span>

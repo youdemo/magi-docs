@@ -10,6 +10,7 @@
 import { EventEmitter } from 'events';
 import type { WorkerSlot } from '../../types';
 import { logger, LogCategory } from '../../logging';
+import { t } from '../../i18n';
 
 // ============================================================================
 // CancellationToken
@@ -40,7 +41,7 @@ export class CancellationToken {
     return this.controller.signal;
   }
 
-  cancel(reason: string = '用户取消'): void {
+  cancel(reason: string = t('dispatchBatch.cancel.userCancelled')): void {
     if (this.isCancelled) return;
     this._reason = reason;
     this.controller.abort(reason);
@@ -61,7 +62,7 @@ export class CancellationToken {
   /** 注册取消回调 */
   onCancel(callback: (reason: string) => void): void {
     if (this.isCancelled) {
-      callback(this._reason || '已取消');
+      callback(this._reason || t('dispatchBatch.cancel.cancelled'));
       return;
     }
     this.callbacks.push(callback);
@@ -74,7 +75,7 @@ export class CancellationToken {
   /** 如果已取消则抛异常，用于循环入口快速退出 */
   throwIfCancelled(): void {
     if (this.isCancelled) {
-      throw new CancellationError(this._reason || '任务被取消');
+      throw new CancellationError(this._reason || t('dispatchBatch.cancel.taskCancelled'));
     }
   }
 }
@@ -271,7 +272,11 @@ export class DispatchBatch extends EventEmitter {
     if (this._phase === next) return;
     const allowed = ALLOWED_PHASE_TRANSITIONS[this._phase];
     if (!allowed.includes(next)) {
-      throw new Error(`DispatchBatch 非法阶段转换: ${this._phase} → ${next} (batch: ${this.id})`);
+      throw new Error(t('dispatchBatch.errors.invalidPhaseTransition', {
+        from: this._phase,
+        to: next,
+        batchId: this.id,
+      }));
     }
     const prev = this._phase;
     this._phase = next;
@@ -299,21 +304,21 @@ export class DispatchBatch extends EventEmitter {
     collaborationContracts?: Partial<DispatchCollaborationContracts>;
   }): DispatchEntry {
     if (this._phase === 'archived') {
-      throw new Error(`DispatchBatch ${this.id} 已归档，无法注册新任务`);
+      throw new Error(t('dispatchBatch.errors.archivedCannotRegister', { batchId: this.id }));
     }
 
     if (this.entries.has(params.taskId)) {
-      throw new Error(`任务 ${params.taskId} 已存在于 Batch ${this.id}`);
+      throw new Error(t('dispatchBatch.errors.taskExistsInBatch', { taskId: params.taskId, batchId: this.id }));
     }
 
     // depends_on 已由 orchestration-executor.normalizeStringArray 完成边界验证和 trim
     const dependsOn = params.dependsOn || [];
     for (const depId of dependsOn) {
       if (depId === params.taskId) {
-        throw new Error(`任务 ${params.taskId} 不能依赖自身`);
+        throw new Error(t('dispatchBatch.errors.taskCannotDependOnSelf', { taskId: params.taskId }));
       }
       if (!this.entries.has(depId)) {
-        throw new Error(`任务 ${params.taskId} 依赖不存在的前序任务 ${depId}`);
+        throw new Error(t('dispatchBatch.errors.dependencyNotFound', { taskId: params.taskId, depId }));
       }
     }
 
@@ -347,7 +352,7 @@ export class DispatchBatch extends EventEmitter {
     if (dependencyState.status === 'skipped') {
       this.updateStatus(params.taskId, 'skipped', {
         success: false,
-        summary: dependencyState.reason || '前序任务未满足，级联跳过',
+        summary: dependencyState.reason || t('dispatchBatch.summary.dependencyNotSatisfiedCascade'),
       });
     }
 
@@ -618,7 +623,7 @@ export class DispatchBatch extends EventEmitter {
 
     if (sorted.length !== this.entries.size) {
       const remaining = Array.from(this.entries.keys()).filter(id => !sorted.includes(id));
-      throw new Error(`依赖链存在环形引用: ${remaining.join(', ')}`);
+      throw new Error(t('dispatchBatch.errors.dependencyCycleDetected', { tasks: remaining.join(', ') }));
     }
 
     return sorted;
@@ -631,7 +636,7 @@ export class DispatchBatch extends EventEmitter {
     for (const taskId of this.entries.keys()) {
       const depth = this.calculateDepth(taskId, new Set());
       if (depth > maxDepth) {
-        throw new Error(`任务 ${taskId} 的依赖链深度 ${depth} 超过上限 ${maxDepth}`);
+        throw new Error(t('dispatchBatch.errors.dependencyDepthExceeded', { taskId, depth, maxDepth }));
       }
     }
   }
@@ -745,7 +750,7 @@ export class DispatchBatch extends EventEmitter {
    * 信号传递链：cancelAll → CancellationToken.cancel → Worker 检测到取消 → LLM 请求中断
    * 已完成的任务不受影响，不触发 Phase C。
    */
-  cancelAll(reason: string = '用户取消'): void {
+  cancelAll(reason: string = t('dispatchBatch.cancel.userCancelled')): void {
     if (this._phase !== 'active') return;
 
     // 发出取消信号
@@ -756,7 +761,7 @@ export class DispatchBatch extends EventEmitter {
       if (entry.status === 'pending' || entry.status === 'waiting_deps' || entry.status === 'running') {
         entry.status = 'cancelled';
         entry.completedAt = Date.now();
-        entry.result = { success: false, summary: `取消: ${reason}` };
+        entry.result = { success: false, summary: t('dispatchBatch.summary.cancelledWithReason', { reason }) };
         this.emit('task:statusChanged', entry.taskId, 'cancelled', entry.result);
       }
     }
@@ -822,7 +827,7 @@ export class DispatchBatch extends EventEmitter {
             idleTimeoutMs,
             summary: this.getSummary(),
           }, LogCategory.ORCHESTRATOR);
-          this.cancelAll(`无活动超时 (idle ${Math.round(idleTime / 1000)}s)`);
+          this.cancelAll(t('dispatchBatch.wait.idleTimeoutReason', { seconds: Math.round(idleTime / 1000) }));
         }
       }, CHECK_INTERVAL);
 
@@ -873,7 +878,7 @@ export class DispatchBatch extends EventEmitter {
       if (completedEntry && completedEntry.status !== 'completed') {
         this.updateStatus(taskId, 'skipped', {
           success: false,
-          summary: `前序任务 ${completedTaskId} 失败/跳过，级联跳过`,
+          summary: t('dispatchBatch.summary.dependentCascadeSkipped', { completedTaskId }),
         });
         continue;
       }
@@ -910,13 +915,13 @@ export class DispatchBatch extends EventEmitter {
       }
       if (depEntry.status === 'failed' || depEntry.status === 'skipped' || depEntry.status === 'cancelled') {
         const statusLabel = depEntry.status === 'failed'
-          ? '失败'
+          ? t('dispatchBatch.status.failed')
           : depEntry.status === 'skipped'
-            ? '跳过'
-            : '取消';
+            ? t('dispatchBatch.status.skipped')
+            : t('dispatchBatch.status.cancelled');
         return {
           status: 'skipped',
-          reason: `前序任务 ${depId} 已${statusLabel}，级联跳过`,
+          reason: t('dispatchBatch.summary.dependencyCascadeReason', { depId, statusLabel }),
         };
       }
       if (depEntry.status !== 'completed') {
@@ -930,7 +935,7 @@ export class DispatchBatch extends EventEmitter {
 
     return {
       status: 'pending',
-      reason: '依赖任务已完成，注册后可直接执行',
+      reason: t('dispatchBatch.summary.dependenciesCompletedReady'),
     };
   }
 

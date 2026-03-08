@@ -3,6 +3,7 @@
   import mermaid from 'mermaid';
   import Icon from './Icon.svelte';
   import { postMessage } from '../lib/vscode-bridge';
+  import { i18n } from '../stores/i18n.svelte';
 
   // Props
   interface Props {
@@ -91,19 +92,20 @@
   // 图表类型显示名
   const typeDisplayName = $derived.by(() => {
     const typeMap: Record<string, string> = {
-      flowchart: '流程图',
-      sequence: '时序图',
-      class: '类图',
-      state: '状态图',
-      er: 'ER 图',
-      gantt: '甘特图',
-      pie: '饼图',
-      journey: '用户旅程',
-      git: 'Git 图',
-      mindmap: '思维导图',
-      timeline: '时间线',
+      flowchart: 'mermaidRenderer.diagramType.flowchart',
+      sequence: 'mermaidRenderer.diagramType.sequence',
+      class: 'mermaidRenderer.diagramType.class',
+      state: 'mermaidRenderer.diagramType.state',
+      er: 'mermaidRenderer.diagramType.er',
+      gantt: 'mermaidRenderer.diagramType.gantt',
+      pie: 'mermaidRenderer.diagramType.pie',
+      journey: 'mermaidRenderer.diagramType.journey',
+      git: 'mermaidRenderer.diagramType.git',
+      mindmap: 'mermaidRenderer.diagramType.mindmap',
+      timeline: 'mermaidRenderer.diagramType.timeline',
     };
-    return typeMap[detectedType] || 'Mermaid';
+    const key = typeMap[detectedType];
+    return key ? i18n.t(key) : 'Mermaid';
   });
 
   onMount(() => {
@@ -156,7 +158,7 @@
   async function doRender() {
     console.log('[MermaidRenderer] doRender called, code length:', code?.length);
     if (!code) {
-      error = '没有提供 Mermaid 代码';
+      error = i18n.t('mermaidRenderer.noCode');
       isRendering = false;
       return;
     }
@@ -173,7 +175,7 @@
       lastRenderedCode = code;
     } catch (e) {
       console.error('[MermaidRenderer] 渲染错误:', e);
-      error = e instanceof Error ? e.message : '渲染失败';
+      error = e instanceof Error ? e.message : i18n.t('mermaidRenderer.renderFailed');
     } finally {
       isRendering = false;
     }
@@ -260,10 +262,10 @@
       {/if}
     </div>
     <div class="header-actions">
-      <button class="header-btn" onclick={copySvg} title="复制 SVG">
+      <button class="header-btn" onclick={copySvg} title={i18n.t('mermaidRenderer.copySvg')}>
         <Icon name="copy" size={14} />
       </button>
-      <button class="header-btn" onclick={openInNewTab} title="在新标签页打开">
+      <button class="header-btn" onclick={openInNewTab} title={i18n.t('mermaidRenderer.openInNewTab')}>
         <Icon name="external-link" size={14} />
       </button>
     </div>
@@ -279,17 +281,17 @@
     onmouseleave={handleMouseUp}
     class:dragging={isDragging}
     role="application"
-    aria-label="Interactive Mermaid diagram"
+    aria-label={i18n.t('mermaidRenderer.ariaLabel')}
   >
     {#if isRendering}
       <div class="loading">
         <span class="spinner"></span>
-        <span>渲染中...</span>
+        <span>{i18n.t('mermaidRenderer.rendering')}</span>
       </div>
     {:else if error}
       <div class="error">
         <Icon name="alert-circle" size={20} />
-        <span class="error-title">渲染失败</span>
+        <span class="error-title">{i18n.t('mermaidRenderer.renderFailed')}</span>
         <pre class="error-message">{error}</pre>
       </div>
     {:else}
@@ -304,13 +306,13 @@
     <!-- 浮动控制按钮（Augment 风格） -->
     {#if !isRendering && !error}
       <div class="floating-controls">
-        <button class="control-btn" onclick={zoomIn} title="放大">
+        <button class="control-btn" onclick={zoomIn} title={i18n.t('mermaidRenderer.zoomIn')}>
           <Icon name="plus" size={14} />
         </button>
-        <button class="control-btn" onclick={zoomOut} title="缩小">
+        <button class="control-btn" onclick={zoomOut} title={i18n.t('mermaidRenderer.zoomOut')}>
           <Icon name="minus" size={14} />
         </button>
-        <button class="control-btn" onclick={resetView} title="重置视图">
+        <button class="control-btn" onclick={resetView} title={i18n.t('mermaidRenderer.resetView')}>
           <Icon name="refresh" size={14} />
         </button>
       </div>

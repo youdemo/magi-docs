@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import Icon from './Icon.svelte';
   import MarkdownContent from './MarkdownContent.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
   // Props
   interface Props {
@@ -37,7 +38,7 @@
 
   // 生成摘要
   const summary = $derived.by(() => {
-    if (!thinkingContent) return '正在思考...';
+    if (!thinkingContent) return i18n.t('thinkingBlock.defaultSummary');
     const plain = thinkingContent
       .replace(/[#*_`~\[\]()]/g, '')
       .replace(/\s+/g, ' ')
@@ -66,11 +67,11 @@
     </span>
 
     <span class="thinking-title">
-      <span class="title-text">思考过程</span>
+      <span class="title-text">{i18n.t('thinkingBlock.title')}</span>
       <span class="thinking-summary">{summary}</span>
     </span>
 
-    <span class="thinking-badge">{thinking.length} 步</span>
+    <span class="thinking-badge">{i18n.t('thinkingBlock.badge', { count: thinking.length })}</span>
   </button>
 
   {#if !collapsed}

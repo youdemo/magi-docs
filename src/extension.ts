@@ -7,6 +7,8 @@ import * as vscode from 'vscode';
 import { WebviewProvider } from './ui/webview-provider';
 import { MermaidPanel } from './ui/mermaid-panel';
 import { globalEventBus } from './events';
+import { t, setLocale as setExtensionLocale } from './i18n';
+import { ConfigManager } from './config';
 
 let webviewProvider: WebviewProvider | undefined;
 let statusBarItem: vscode.StatusBarItem | undefined;
@@ -16,6 +18,8 @@ let statusBarItem: vscode.StatusBarItem | undefined;
  */
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   logger.info('扩展.激活.开始', undefined, LogCategory.SYSTEM);
+  const locale = ConfigManager.getInstance().get('locale');
+  setExtensionLocale(locale === 'en-US' ? 'en-US' : 'zh-CN');
 
   // 获取工作区目录列表
   const workspaceFolders = vscode.workspace.workspaceFolders?.map(folder => ({
@@ -23,7 +27,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     path: folder.uri.fsPath,
   })) || [];
   if (workspaceFolders.length === 0) {
-    vscode.window.showWarningMessage('Magi: 请先打开一个工作区');
+    vscode.window.showWarningMessage(t('extension.openWorkspaceFirst'));
     return;
   }
 
@@ -93,31 +97,31 @@ function updateStatusBar(status: 'idle' | 'running' | 'completed' | 'failed' | '
   switch (status) {
     case 'idle':
       statusBarItem.text = '$(robot) Magi';
-      statusBarItem.tooltip = '点击打开 Magi';
+      statusBarItem.tooltip = t('extension.tooltip.clickToOpen');
       statusBarItem.backgroundColor = undefined;
       break;
     case 'running':
       statusBarItem.text = '$(sync~spin) Magi';
-      statusBarItem.tooltip = '任务执行中... 按 Escape 打断';
+      statusBarItem.tooltip = t('extension.tooltip.taskRunning');
       statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
       break;
     case 'completed':
       statusBarItem.text = '$(check) Magi';
-      statusBarItem.tooltip = '任务已完成';
+      statusBarItem.tooltip = t('extension.tooltip.taskCompleted');
       statusBarItem.backgroundColor = undefined;
       // 3秒后恢复默认状态
       setTimeout(() => updateStatusBar('idle'), 3000);
       break;
     case 'failed':
       statusBarItem.text = '$(error) Magi';
-      statusBarItem.tooltip = '任务执行失败';
+      statusBarItem.tooltip = t('extension.tooltip.taskFailed');
       statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
       // 5秒后恢复默认状态
       setTimeout(() => updateStatusBar('idle'), 5000);
       break;
     case 'cancelled':
       statusBarItem.text = '$(debug-pause) Magi';
-      statusBarItem.tooltip = '任务已取消';
+      statusBarItem.tooltip = t('extension.tooltip.taskCancelled');
       statusBarItem.backgroundColor = undefined;
       // 3秒后恢复默认状态
       setTimeout(() => updateStatusBar('idle'), 3000);
@@ -150,29 +154,29 @@ function registerCommands(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('magi.newSession', async () => {
       if (!webviewProvider) {
-        vscode.window.showWarningMessage('Magi: 面板未初始化');
+        vscode.window.showWarningMessage(t('extension.panelNotInit'));
         return;
       }
       try {
         await webviewProvider.createNewSession();
-        vscode.window.showInformationMessage('Magi: 新会话已创建');
+        vscode.window.showInformationMessage(t('extension.newSessionCreated'));
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        vscode.window.showErrorMessage(`Magi: 创建会话失败 - ${msg}`);
+        vscode.window.showErrorMessage(t('extension.createSessionFailed', { error: msg }));
       }
     })
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('magi.showStatus', async () => {
-      vscode.window.showInformationMessage('Magi: 使用 LLM API 模式运行');
+      vscode.window.showInformationMessage(t('extension.llmApiMode'));
     })
   );
 
   context.subscriptions.push(
     vscode.commands.registerCommand('magi.interruptTask', () => {
       globalEventBus.emitEvent('task:cancelled', {});
-      vscode.window.showInformationMessage('Magi: 正在取消任务...');
+      vscode.window.showInformationMessage(t('extension.cancelingTask'));
     })
   );
 

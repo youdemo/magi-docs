@@ -49,7 +49,7 @@ export class PromptEnhancerService {
         try {
           codeContext = await this.collectCodeContext(this.deps.workspaceRoot, prompt);
         } catch (error) {
-          logger.warn('提示词增强.代码上下文收集失败', { error }, LogCategory.UI);
+          logger.warn('PromptEnhancer.codeContextCollectionFailed', { error }, LogCategory.UI);
         }
       }
 
@@ -72,7 +72,7 @@ export class PromptEnhancerService {
         enabled: true,
       });
 
-      logger.info('提示词增强.开始', {
+      logger.info('PromptEnhancer.start', {
         model: activeConfig.model,
         used: activeLabel,
         fallbackToOrchestrator: !useAuxiliary,
@@ -89,17 +89,17 @@ export class PromptEnhancerService {
       const enhancedPrompt = response.content?.trim() || '';
 
       if (enhancedPrompt) {
-        logger.info('提示词增强.完成', {
+        logger.info('PromptEnhancer.completed', {
           originalLength: prompt.length,
           enhancedLength: enhancedPrompt.length,
         }, LogCategory.UI);
         return { enhancedPrompt };
       }
 
-      return { enhancedPrompt: '', error: '未获取到增强结果' };
+      return { enhancedPrompt: '', error: 'No enhancement result received' };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      logger.error('提示词增强.失败', { error: errorMsg }, LogCategory.UI);
+      logger.error('PromptEnhancer.failed', { error: errorMsg }, LogCategory.UI);
       return { enhancedPrompt: '', error: errorMsg };
     }
   }
@@ -136,9 +136,9 @@ export class PromptEnhancerService {
           { workerId: 'orchestrator', role: 'orchestrator' }
         );
         if (!result.isError && result.content && result.content !== '未找到相关代码（本地三级搜索无结果）') {
-          contextParts.push(`## 相关代码\n${result.content}`);
+          contextParts.push(`## Relevant Code\n${result.content}`);
           currentLength += result.content.length;
-          logger.info('提示词增强.代码上下文获取成功', { resultLength: result.content.length }, LogCategory.UI);
+          logger.info('PromptEnhancer.codeContextRetrieved', { resultLength: result.content.length }, LogCategory.UI);
         }
       }
 
@@ -156,17 +156,17 @@ export class PromptEnhancerService {
               : content;
 
             if (currentLength + truncatedContent.length <= maxContextLength) {
-              contextParts.push(`## 项目指南 (${guideFile})\n${truncatedContent}`);
+              contextParts.push(`## Project Guidelines (${guideFile})\n${truncatedContent}`);
               currentLength += truncatedContent.length;
               break;
             }
           } catch (error) {
-            logger.debug('提示词增强.指南文件读取失败', { file: guideFile, error }, LogCategory.UI);
+            logger.debug('PromptEnhancer.guidelineFileReadFailed', { file: guideFile, error }, LogCategory.UI);
           }
         }
       }
     } catch (error) {
-      logger.warn('提示词增强.代码上下文收集异常', { error }, LogCategory.UI);
+      logger.warn('PromptEnhancer.codeContextCollectionError', { error }, LogCategory.UI);
     }
 
     return contextParts.join('\n\n');
@@ -206,7 +206,7 @@ export class PromptEnhancerService {
     isChinese: boolean,
   ): string {
     const languageInstruction = isChinese
-      ? '请用中文输出增强后的提示词。'
+      ? 'Output the enhanced prompt in Chinese.'
       : 'Please output the enhanced prompt in English.';
 
     return `You are an expert prompt engineer. Your task is to enhance the user's original prompt to make it clearer, more specific, and more actionable for an AI coding assistant.

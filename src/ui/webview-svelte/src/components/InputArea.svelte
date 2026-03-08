@@ -14,6 +14,7 @@
   import { MessageCategory } from '../../../../protocol/message-protocol';
   import Icon from './Icon.svelte';
   import { generateId, ensureArray } from '../lib/utils';
+  import { i18n } from '../stores/i18n.svelte';
 
   // 技能类型
   interface InstructionSkill {
@@ -91,7 +92,7 @@
   // 执行中发送输入 = 补充指令（默认在下一决策点生效）
   function sendMessage() {
     if (isModeSyncing) {
-      addToast('warning', '交互模式切换尚未完成，请稍候再发送');
+      addToast('warning', i18n.t('input.modeSyncNotReady'));
       return;
     }
 
@@ -104,7 +105,7 @@
     const now = Date.now();
     const minInterval = isSending ? RATE_LIMIT_PROCESSING : RATE_LIMIT_IDLE;
     if (now - lastSendTime < minInterval) {
-      addToast('warning', '发送过快，请稍后再试');
+      addToast('warning', i18n.t('input.sendTooFast'));
       return;
     }
     lastSendTime = now;
@@ -115,7 +116,7 @@
       : content;
 
     if (finalPrompt.length > MAX_INPUT_CHARS) {
-      addToast('warning', `输入内容过长（${finalPrompt.length} 字符），请控制在 ${MAX_INPUT_CHARS} 字符以内`);
+      addToast('warning', i18n.t('input.inputTooLong', { length: finalPrompt.length, max: MAX_INPUT_CHARS }));
       return;
     }
 
@@ -124,7 +125,7 @@
       // 执行中：发送补充指令（后端在下一决策点注入）
       // 注意：执行中暂不支持图片
       if (selectedImages.length > 0) {
-        addToast('warning', '执行中暂不支持发送图片，请先停止当前任务');
+        addToast('warning', i18n.t('input.noImageDuringExecution'));
         return;
       }
       vscode.postMessage({
@@ -137,7 +138,7 @@
       const requestId = generateId();
       vscode.postMessage({
         type: 'executeTask',
-        prompt: finalPrompt || '请分析这些图片',
+        prompt: finalPrompt || i18n.t('input.analyzeImages'),
         mode: interactionMode,
         requestId,
         images: selectedImages.map(img => ({ dataUrl: img.dataUrl })),
@@ -190,8 +191,8 @@
     deepTaskEnabled = !deepTaskEnabled;
     vscode.postMessage({ type: 'updateSetting', key: 'deepTask', value: deepTaskEnabled });
     addToast('info', deepTaskEnabled
-      ? '已开启深度模式（项目级治理，新会话生效）'
-      : '已切换为常规模式（功能级治理）');
+      ? i18n.t('input.deepModeEnabled')
+      : i18n.t('input.deepModeDisabled'));
   }
 
   // 拖动调整大小
@@ -260,7 +261,7 @@
         event.preventDefault();  // 阻止默认粘贴行为
 
         if (selectedImages.length >= MAX_IMAGES) {
-          addToast('warning', `最多支持 ${MAX_IMAGES} 张图片`);
+          addToast('warning', i18n.t('input.maxImages', { max: MAX_IMAGES }));
           return;
         }
 
@@ -268,7 +269,7 @@
         if (!file) continue;
 
         if (file.size > MAX_IMAGE_SIZE) {
-          addToast('warning', `图片过大（${(file.size / 1024 / 1024).toFixed(1)}MB），请控制在 10MB 以内`);
+          addToast('warning', i18n.t('input.imageTooLarge', { size: (file.size / 1024 / 1024).toFixed(1) }));
           continue;
         }
 
@@ -280,13 +281,13 @@
             selectedImages = [...selectedImages, {
               id: generateId(),
               dataUrl,
-              name: file.name || `粘贴图片_${selectedImages.length + 1}`,
+              name: file.name || i18n.t('input.pastedImage', { index: selectedImages.length + 1 }),
             }];
-            addToast('success', '图片已添加');
+            addToast('success', i18n.t('input.imageAdded'));
           }
         };
         reader.onerror = () => {
-          addToast('error', '图片读取失败');
+          addToast('error', i18n.t('input.imageReadFailed'));
         };
         reader.readAsDataURL(file);
       }
@@ -319,7 +320,7 @@
           const enhancedPrompt = typeof payload?.enhancedPrompt === 'string' ? payload.enhancedPrompt : '';
           if (enhancedPrompt) {
             inputValue = enhancedPrompt;
-            addToast('success', '提示词已增强');
+            addToast('success', i18n.t('input.promptEnhanced'));
           }
         }
       }
@@ -356,7 +357,7 @@
         <span class="ia-skill-badge">
           <Icon name="skill" size={11} />
           <span class="ia-skill-badge-name">/{selectedSkill.name}</span>
-          <button class="ia-skill-badge-remove" onclick={clearSkillBadge} title="移除技能">
+          <button class="ia-skill-badge-remove" onclick={clearSkillBadge} title={i18n.t('input.removeSkill')}>
             <Icon name="close" size={9} />
           </button>
         </span>
@@ -370,10 +371,10 @@
       class:has-images={selectedImages.length > 0}
       class:has-badge={!!selectedSkill}
       placeholder={selectedSkill
-        ? `描述 ${selectedSkill.name} 的参数...`
+        ? i18n.t('input.placeholderWithSkill', { skillName: selectedSkill.name })
         : selectedImages.length > 0
-          ? "添加描述（可选）..."
-          : "描述你的任务... (⌘+V 粘贴图片)"}
+          ? i18n.t('input.placeholderWithImages')
+          : i18n.t('input.placeholderDefault')}
       disabled={isInteractionBlocking}
       onkeydown={handleKeydown}
       onpaste={handlePaste}
@@ -385,13 +386,13 @@
         {#each selectedImages as img (img.id)}
           <div class="ia-img-item">
             <img src={img.dataUrl} alt={img.name} class="ia-img-thumb" />
-            <button class="ia-img-remove" onclick={() => removeImage(img.id)} title="移除">
+            <button class="ia-img-remove" onclick={() => removeImage(img.id)} title={i18n.t('input.remove')}>
               <Icon name="close" size={10} />
             </button>
           </div>
         {/each}
         {#if selectedImages.length > 1}
-          <button class="ia-img-clear" onclick={clearAllImages} title="清空所有图片">清空</button>
+          <button class="ia-img-clear" onclick={clearAllImages} title={i18n.t('input.clearAllImages')}>{i18n.t('input.clearImages')}</button>
         {/if}
       </div>
     {/if}
@@ -400,7 +401,7 @@
       <div class="ia-left">
         <!-- 技能下拉选择器 -->
         <div class="ia-skill-wrap">
-          <button class="ia-icon-btn" onclick={toggleSkillDropdown} title="使用技能">
+          <button class="ia-icon-btn" onclick={toggleSkillDropdown} title={i18n.t('input.useSkill')}>
             <Icon name="skill" size={14} />
           </button>
           {#if skillDropdownOpen}
@@ -411,13 +412,13 @@
                 <input
                   type="text"
                   bind:value={skillSearchQuery}
-                  placeholder="搜索技能..."
+                  placeholder={i18n.t('input.searchSkill')}
                   class="ia-skill-search-input"
                 />
               </div>
               <div class="ia-skill-list">
                 {#if filteredSkills.length === 0}
-                  <div class="ia-skill-empty">暂无可用技能</div>
+                  <div class="ia-skill-empty">{i18n.t('input.noSkills')}</div>
                 {:else}
                   {#each filteredSkills as skill (skill.name)}
                     <button
@@ -448,10 +449,10 @@
           tabindex="0"
           onclick={() => setMode(interactionMode === 'ask' ? 'auto' : 'ask')}
           onkeydown={(e) => e.key === 'Enter' && setMode(interactionMode === 'ask' ? 'auto' : 'ask')}
-          title={isModeSyncing ? '模式切换中…' : (interactionMode === 'ask' ? '当前: Ask 模式' : '当前: Auto 模式')}
+          title={isModeSyncing ? i18n.t('input.modeSwitching') : (interactionMode === 'ask' ? i18n.t('input.currentAskMode') : i18n.t('input.currentAutoMode'))}
         >
-          <span class="ia-toggle-label ask" class:active={interactionMode === 'ask'}>Ask</span>
-          <span class="ia-toggle-label auto" class:active={interactionMode === 'auto'}>Auto</span>
+          <span class="ia-toggle-label ask" class:active={interactionMode === 'ask'}>{i18n.t('input.mode.ask')}</span>
+          <span class="ia-toggle-label auto" class:active={interactionMode === 'auto'}>{i18n.t('input.mode.auto')}</span>
           <span class="ia-toggle-thumb" class:syncing={isModeSyncing}></span>
         </div>
 
@@ -462,11 +463,11 @@
           class:active={deepTaskEnabled}
           onclick={toggleDeepTask}
           title={deepTaskEnabled
-            ? '深度模式（项目级）：高强度循环 + 多轮复审'
-            : '常规模式（功能级）：有界循环 + 轻量复审'}
+            ? i18n.t('input.deepModeActive')
+            : i18n.t('input.deepModeInactive')}
         >
           <Icon name="infinity" size={12} />
-          <span class="ia-deep-label">深度</span>
+          <span class="ia-deep-label">{i18n.t('input.deepLabel')}</span>
         </button>
       </div>
 
@@ -476,7 +477,7 @@
           class="ia-icon-btn ia-enhance"
           class:enhancing={isEnhancing}
           onclick={enhancePrompt}
-          title={isEnhancing ? '增强中...' : '增强提示 (AI 优化)'}
+          title={isEnhancing ? i18n.t('input.enhancing') : i18n.t('input.enhancePrompt')}
           disabled={!inputValue.trim() || isEnhancing}
         >
           <span class:spinning={isEnhancing}>
@@ -491,13 +492,13 @@
             class="ia-send ready"
             onclick={sendMessage}
             disabled={isInteractionBlocking || isModeSyncing}
-            title={isModeSyncing ? '模式切换中' : (isSending ? '发送补充指令 (⌘+Enter)' : '发送 (⌘+Enter)')}
+            title={isModeSyncing ? i18n.t('input.modeSwitchingShort') : (isSending ? i18n.t('input.sendSupplementary') : i18n.t('input.send'))}
           >
             <Icon name="send" size={14} />
           </button>
         {:else if isSending}
           <!-- 无内容 + 运行中：显示停止按钮 -->
-          <button class="ia-send stop" onclick={stopTask} title="停止">
+          <button class="ia-send stop" onclick={stopTask} title={i18n.t('input.stop')}>
             <Icon name="stop" size={14} />
           </button>
         {:else}
@@ -505,7 +506,7 @@
           <button
             class="ia-send"
             disabled
-            title="发送 (⌘+Enter)"
+            title={i18n.t('input.send')}
           >
             <Icon name="send" size={14} />
           </button>

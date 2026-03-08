@@ -12,6 +12,7 @@
  */
 
 import { logger, LogCategory } from '../../logging';
+import { t } from '../../i18n';
 import type { WorkerSlot } from '../../types';
 import type { TokenUsage } from '../../types/agent-types';
 import type { IAdapterFactory } from '../../adapters/adapter-factory-interface';
@@ -157,24 +158,30 @@ export class DispatchManager {
     const mo = this.deps.missionOrchestrator;
 
     mo.on('todoStarted', ({ assignmentId, content }: { assignmentId: string; content: string }) => {
-      this.reportTodoProgress(assignmentId, `正在执行: ${content}`);
+      this.reportTodoProgress(assignmentId, t('dispatch.todo.started', { content }));
     });
 
     mo.on('todoCompleted', ({ assignmentId, content }: { assignmentId: string; content: string }) => {
-      this.reportTodoProgress(assignmentId, `完成: ${content}`);
+      this.reportTodoProgress(assignmentId, t('dispatch.todo.completed', { content }));
     });
 
     mo.on('todoFailed', ({ assignmentId, content, error }: { assignmentId: string; content: string; error?: string }) => {
-      this.reportTodoProgress(assignmentId, `失败: ${content} - ${error || '未知错误'}`);
+      this.reportTodoProgress(assignmentId, t('dispatch.todo.failed', {
+        content,
+        error: error || t('dispatch.common.unknownError'),
+      }));
     });
 
     mo.on('insightGenerated', ({ workerId, type, content, importance }: { workerId: string; type: string; content: string; importance: string }) => {
       const typeLabels: Record<string, string> = {
-        decision: '决策', contract: '契约', risk: '风险', constraint: '约束',
+        decision: t('dispatch.insight.type.decision'),
+        contract: t('dispatch.insight.type.contract'),
+        risk: t('dispatch.insight.type.risk'),
+        constraint: t('dispatch.insight.type.constraint'),
       };
       const label = typeLabels[type] || type;
       const level = importance === 'critical' ? 'warning' : 'info';
-      this.deps.messageHub.notify(`[${workerId}] ${label}: ${content}`, level);
+      this.deps.messageHub.notify(t('dispatch.insight.notification', { workerId, label, content }), level);
     });
   }
 
@@ -201,7 +208,7 @@ export class DispatchManager {
     if (!this._planningExecutor) {
       const todoManager = this.deps.getTodoManager();
       if (!todoManager) {
-        throw new Error('TodoManager 未初始化');
+        throw new Error(t('dispatch.errors.todoManagerNotInitialized'));
       }
       this._planningExecutor = new PlanningExecutor(todoManager);
     }
@@ -230,7 +237,7 @@ export class DispatchManager {
    */
   resetForNewExecutionCycle(): void {
     if (this.activeBatch?.status === 'active') {
-      this.activeBatch.cancelAll('开始新一轮执行，清理上一轮残留任务');
+      this.activeBatch.cancelAll(t('dispatch.batch.resetCancelReason'));
     }
 
     if (this.activeBatch) {
@@ -343,7 +350,7 @@ export class DispatchManager {
           return {
             task_id: '',
             status: 'failed' as const,
-            error: 'requires_modification 必须为布尔值',
+            error: t('dispatch.errors.requiresModificationBoolean'),
           };
         }
         const taskName = typeof task_name === 'string' ? task_name.trim() : '';
@@ -352,7 +359,7 @@ export class DispatchManager {
           return {
             task_id: '',
             status: 'failed' as const,
-            error: 'task_name 或 goal 至少需要一个非空字符串',
+            error: t('dispatch.errors.taskNameOrGoalRequired'),
           };
         }
         const taskTitle = taskName || goalText;
@@ -369,7 +376,7 @@ export class DispatchManager {
           return {
             task_id: '',
             status: 'failed' as const,
-            error: 'acceptance / constraints / context 必须是至少包含 1 个非空字符串的数组',
+            error: t('dispatch.errors.acceptanceConstraintsContextRequired'),
           };
         }
         const scopeHintValues = Array.isArray(scopeHint)
@@ -415,7 +422,11 @@ export class DispatchManager {
         }, LogCategory.ORCHESTRATOR);
         if (decision.degraded) {
           this.deps.messageHub.notify(
-            `任务改派：请求分类 ${decision.category}，实际执行 Worker 为 ${decision.selectedWorker}（${decision.routingReason}）`,
+            t('dispatch.notify.routingAdjusted', {
+              category: decision.category,
+              selectedWorker: decision.selectedWorker,
+              routingReason: decision.routingReason,
+            }),
             'warning'
           );
         }
@@ -427,7 +438,7 @@ export class DispatchManager {
           return {
             task_id: '',
             status: 'failed' as const,
-            error: `创建任务失败: ${error?.message || String(error)}`,
+            error: t('dispatch.errors.createTaskFailed', { error: error?.message || String(error) }),
           };
         }
 
@@ -451,7 +462,7 @@ export class DispatchManager {
         // 注册到 DispatchBatch
         try {
           if ((!normalizedScopeHint || normalizedScopeHint.length === 0) && this.shouldWarnMissingScopeHintForParallelTask(this.activeBatch, normalizedDependsOn)) {
-            throw new Error('并行任务必须显式提供 scope_hint，以满足文件级分区要求');
+            throw new Error(t('dispatch.errors.parallelScopeHintRequired'));
           }
 
           this.activeBatch.register({
@@ -587,7 +598,7 @@ export class DispatchManager {
           return {
             success: false,
             childTodoIds: [],
-            error: `Assignment ${callerContext.assignmentId} 不在活跃执行中`,
+            error: t('dispatch.errors.assignmentNotActive', { assignmentId: callerContext.assignmentId }),
           };
         }
 
@@ -599,7 +610,7 @@ export class DispatchManager {
             return {
               success: false,
               childTodoIds: [],
-              error: '已达最大拆分深度（3 级），不可再次拆分',
+              error: t('dispatch.errors.splitDepthExceeded'),
             };
           }
         }
@@ -613,7 +624,7 @@ export class DispatchManager {
           return {
             success: false,
             childTodoIds: [],
-            error: 'TodoManager 未初始化',
+            error: t('dispatch.errors.todoManagerNotInitialized'),
           };
         }
 
@@ -623,7 +634,7 @@ export class DispatchManager {
           return {
             success: false,
             childTodoIds: [],
-            error: 'split_todo 缺少当前会话上下文，无法创建子任务',
+            error: t('dispatch.errors.splitTodoMissingSessionContext'),
           };
         }
         for (const subtask of subtasks) {
@@ -657,7 +668,7 @@ export class DispatchManager {
           todoManager = this.deps.getTodoManager();
         }
         if (!todoManager) {
-          throw new Error('TodoManager 未初始化，无法获取 Todos');
+          throw new Error(t('dispatch.errors.todoManagerNotInitializedGetTodos'));
         }
 
         const explicitMissionId = params.missionId?.trim();
@@ -694,7 +705,7 @@ export class DispatchManager {
         }
 
         if (!isOrchestratorCaller) {
-          throw new Error('Worker 缺少有效 mission 上下文，无法查询 Todos');
+          throw new Error(t('dispatch.errors.workerMissingMissionContext'));
         }
 
         const sessionId = explicitSessionId
@@ -702,7 +713,7 @@ export class DispatchManager {
           || extractSessionId(callerMissionId)
           || this.deps.getCurrentSessionId();
         if (!sessionId) {
-          throw new Error('未找到可查询的 session，请显式传入 mission_id 或 session_id');
+          throw new Error(t('dispatch.errors.sessionNotFoundForTodos'));
         }
 
         const missionIds = (await this.deps.getMissionIdsBySession(sessionId))
@@ -740,12 +751,12 @@ export class DispatchManager {
           todoManager = this.deps.getTodoManager();
         }
         if (!todoManager) {
-          return { success: false, error: 'TodoManager 未初始化，无法更新 Todo' };
+          return { success: false, error: t('dispatch.errors.todoManagerNotInitializedUpdateTodo') };
         }
 
         try {
           if (!params.updates || params.updates.length === 0) {
-            return { success: false, error: '缺少有效的更新内容(updates)' };
+            return { success: false, error: t('dispatch.errors.updateTodoMissingUpdates') };
           }
 
           const allowedStatus = new Set<UpdateTodoStatus>(['pending', 'skipped']);
@@ -762,17 +773,20 @@ export class DispatchManager {
 
           for (const update of params.updates) {
             if (!update.todoId) {
-              throw new Error('update_todo 存在缺少 todo_id 的条目');
+              throw new Error(t('dispatch.errors.updateTodoMissingTodoId'));
             }
 
             const hasStatus = update.status !== undefined;
             const hasContent = update.content !== undefined;
             if (!hasStatus && !hasContent) {
-              throw new Error(`Todo ${update.todoId} 缺少可执行更新字段（status/content）`);
+              throw new Error(t('dispatch.errors.updateTodoMissingFields', { todoId: update.todoId }));
             }
 
             if (update.status !== undefined && !allowedStatus.has(update.status as UpdateTodoStatus)) {
-              throw new Error(`Todo ${update.todoId} status=${update.status} 非法，仅支持 pending/skipped`);
+              throw new Error(t('dispatch.errors.updateTodoInvalidStatus', {
+                todoId: update.todoId,
+                status: update.status,
+              }));
             }
 
             const todo = await todoManager.get(update.todoId);
@@ -782,11 +796,17 @@ export class DispatchManager {
 
             const targetStatus = update.status as UpdateTodoStatus | undefined;
             if (targetStatus === 'pending' && !pendingAllowedSource.has(todo.status)) {
-              throw new Error(`Todo ${update.todoId} 当前状态=${todo.status}，不允许重置为 pending`);
+              throw new Error(t('dispatch.errors.updateTodoCannotResetPending', {
+                todoId: update.todoId,
+                currentStatus: todo.status,
+              }));
             }
 
             if (targetStatus === 'skipped' && !skippedAllowedSource.has(todo.status)) {
-              throw new Error(`Todo ${update.todoId} 当前状态=${todo.status}，不允许更新为 skipped`);
+              throw new Error(t('dispatch.errors.updateTodoCannotSetSkipped', {
+                todoId: update.todoId,
+                currentStatus: todo.status,
+              }));
             }
 
             plans.push({
@@ -849,7 +869,7 @@ export class DispatchManager {
     const batch = this.activeBatch;
     const category = this.dispatchTaskCategories.get(taskId);
     if (!category) {
-      const errorMsg = `dispatchTaskCategories 中未找到 taskId=${taskId}，dispatch 注册流程存在数据不一致`;
+      const errorMsg = t('dispatch.errors.dispatchCategoryMissing', { taskId });
       this.deps.messageHub.subTaskCard({
         id: taskId,
         title: task,
@@ -884,7 +904,12 @@ export class DispatchManager {
         entry.worker = effectiveWorker;
       }
       this.deps.messageHub.notify(
-        `任务 ${taskId} 执行前改派：${worker} -> ${effectiveWorker}（${executionRouting.routingReason}）`,
+        t('dispatch.notify.executionRoutingAdjusted', {
+          taskId,
+          fromWorker: worker,
+          toWorker: effectiveWorker,
+          routingReason: executionRouting.routingReason,
+        }),
         'warning',
       );
       logger.warn('Dispatch.Worker.执行前改派', {
@@ -964,7 +989,7 @@ export class DispatchManager {
 
       const currentSessionId = this.deps.getCurrentSessionId()?.trim();
       if (!currentSessionId) {
-        const errorMsg = '当前会话上下文缺失，无法创建 Todo';
+        const errorMsg = t('dispatch.errors.currentSessionMissingCannotCreateTodo');
         this.deps.messageHub.subTaskCard({
           id: taskId,
           title: task,
@@ -1038,7 +1063,7 @@ export class DispatchManager {
 
       // 直接使用 Worker 生成的结构化总结（唯一生产者：AutonomousWorker.buildStructuredSummary）
       const verificationWarnings = result.verification.degraded
-        ? (result.verification.warnings.length > 0 ? result.verification.warnings : ['验收检查执行异常'])
+        ? (result.verification.warnings.length > 0 ? result.verification.warnings : [t('dispatch.verification.degradedFallbackWarning')])
         : [];
       const summary = result.summary;
       const modifiedFiles = [...new Set([
@@ -1048,7 +1073,7 @@ export class DispatchManager {
 
       if (verificationWarnings.length > 0) {
         this.deps.messageHub.notify(
-          `任务 ${taskId} 验收检查降级：${verificationWarnings[0]}`,
+          t('dispatch.notify.verificationDegraded', { taskId, warning: verificationWarnings[0] }),
           'warning',
         );
       }
@@ -1297,21 +1322,21 @@ export class DispatchManager {
     const laneTotal = Math.max(entries.length, 1);
     const list = entries.length > 0 ? entries : [{
       taskId: currentTaskId,
-      task: current?.task || '未知任务',
+      task: current?.task || t('dispatch.lane.unknownTask'),
       status: 'running' as const,
       dependsOn: [] as string[],
     }];
 
     const lines = [
-      '## Worker 任务队列',
-      `当前执行：${current?.task || '未知任务'}`,
-      `进度：${laneIndex}/${laneTotal}`,
-      '说明：队列为实时快照，后续同 Worker 派发将自动并入此卡片。',
+      t('dispatch.lane.header'),
+      t('dispatch.lane.currentTask', { task: current?.task || t('dispatch.lane.unknownTask') }),
+      t('dispatch.lane.progress', { laneIndex, laneTotal }),
+      t('dispatch.lane.description'),
       '',
-      '任务列表：',
+      t('dispatch.lane.taskList'),
       ...list.map((item, index) => {
         const dependsText = item.dependsOn.length > 0
-          ? `（依赖: ${item.dependsOn.join(', ')}）`
+          ? t('dispatch.lane.dependsOn', { dependsOn: item.dependsOn.join(', ') })
           : '';
         return `${index + 1}. [${this.getWorkerLaneTaskStatusLabel(item.status, item.taskId === currentTaskId)}] ${item.task}${dependsText}`;
       }),
@@ -1322,24 +1347,24 @@ export class DispatchManager {
 
   private getWorkerLaneTaskStatusLabel(status: DispatchStatus, isCurrent: boolean): string {
     if (isCurrent) {
-      return '进行中';
+      return t('dispatch.lane.status.running');
     }
     switch (status) {
       case 'completed':
-        return '已完成';
+        return t('dispatch.lane.status.completed');
       case 'failed':
-        return '失败';
+        return t('dispatch.lane.status.failed');
       case 'skipped':
-        return '已跳过';
+        return t('dispatch.lane.status.skipped');
       case 'cancelled':
-        return '已取消';
+        return t('dispatch.lane.status.cancelled');
       case 'waiting_deps':
-        return '等待依赖';
+        return t('dispatch.lane.status.waitingDeps');
       case 'running':
-        return '进行中';
+        return t('dispatch.lane.status.running');
       case 'pending':
       default:
-        return '待执行';
+        return t('dispatch.lane.status.pending');
     }
   }
 
@@ -1415,7 +1440,7 @@ export class DispatchManager {
         this.reactiveBatchAwaitingSummary.add(batchId);
         if (auditOutcome.level === 'intervention') {
           const blockedReport = this.buildInterventionReport(auditOutcome, entries);
-          this.deps.messageHub.notify('反应式编排审计发现需干预项，已阻断自动交付', 'error');
+          this.deps.messageHub.notify(t('dispatch.audit.reactiveInterventionBlocked'), 'error');
           this.deps.messageHub.orchestratorMessage(blockedReport, { type: MessageType.RESULT });
           logger.warn('Reactive Phase 审计阻断交付', {
             batchId,
@@ -1438,7 +1463,7 @@ export class DispatchManager {
       this.activeWorkerLanes.clear();
       this.clearDispatchScheduleTimers(batchId);
       logger.info('DispatchBatch.已取消', { batchId, reason }, LogCategory.ORCHESTRATOR);
-      this.deps.messageHub.orchestratorMessage(`任务已取消: ${reason}`);
+      this.deps.messageHub.orchestratorMessage(t('dispatch.notify.taskCancelledWithReason', { reason }));
     });
 
     batch.on('phase:changed', (_batchId: string, phase) => {
@@ -1493,7 +1518,12 @@ export class DispatchManager {
         const previousWorker = entry.worker;
         entry.worker = selectedWorker;
         this.deps.messageHub.notify(
-          `任务 ${entry.taskId} 调度改派：${previousWorker} -> ${selectedWorker}（${routing.routingReason}）`,
+          t('dispatch.notify.schedulingRoutingAdjusted', {
+            taskId: entry.taskId,
+            fromWorker: previousWorker,
+            toWorker: selectedWorker,
+            routingReason: routing.routingReason,
+          }),
           'warning',
         );
         logger.warn('Dispatch.WorkerLane.忙碌改派', {
@@ -1530,13 +1560,13 @@ export class DispatchManager {
     }
 
     try {
-      this.deps.messageHub.progress('Summarizing', '正在汇总所有 Worker 的执行结果...');
+      this.deps.messageHub.progress(t('dispatch.phaseC.progressTitle'), t('dispatch.phaseC.progressMessage'));
 
       const finalAuditOutcome = auditOutcome || this.ensureBatchAuditOutcome(batch, entries);
 
       if (finalAuditOutcome.level === 'intervention') {
         const blockedReport = this.buildInterventionReport(finalAuditOutcome, entries);
-        this.deps.messageHub.notify('Phase C 审计发现需干预项，已阻断自动交付', 'error');
+        this.deps.messageHub.notify(t('dispatch.audit.phaseCInterventionBlocked'), 'error');
         this.deps.messageHub.orchestratorMessage(blockedReport, { type: MessageType.RESULT });
         logger.warn('Phase C 审计阻断交付', {
           batchId: batch.id,
@@ -1560,7 +1590,7 @@ export class DispatchManager {
           }
         ),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error(`Phase C 汇总超时 (${PHASE_C_TIMEOUT / 1000}s)`)), PHASE_C_TIMEOUT)
+          setTimeout(() => reject(new Error(t('dispatch.phaseC.timeout', { seconds: PHASE_C_TIMEOUT / 1000 }))), PHASE_C_TIMEOUT)
         ),
       ]);
 
@@ -1586,9 +1616,9 @@ export class DispatchManager {
   private phaseCFallback(entries: DispatchEntry[]): void {
     const lines = entries.map(e => {
       const status = e.status === 'completed' ? '✅' : e.status === 'failed' ? '❌' : '⏭️';
-      return `${status} **[${e.worker}]** ${e.result?.summary || '无输出'}`;
+      return `${status} **[${e.worker}]** ${e.result?.summary || t('dispatch.phaseC.noOutput')}`;
     });
-    this.deps.messageHub.notify('汇总模型调用失败，以下为各 Worker 原始执行结果', 'warning');
+    this.deps.messageHub.notify(t('dispatch.phaseC.fallbackNotice'), 'warning');
     this.deps.messageHub.orchestratorMessage(lines.join('\n'), { type: MessageType.RESULT });
   }
 
@@ -1618,29 +1648,41 @@ export class DispatchManager {
 
     const statusLabel = (status: DispatchStatus): string => {
       switch (status) {
-        case 'completed': return '已完成';
-        case 'failed': return '失败';
-        case 'skipped': return '跳过';
-        case 'cancelled': return '已取消';
-        case 'running': return '执行中';
+        case 'completed': return t('dispatch.reactiveSummary.status.completed');
+        case 'failed': return t('dispatch.reactiveSummary.status.failed');
+        case 'skipped': return t('dispatch.reactiveSummary.status.skipped');
+        case 'cancelled': return t('dispatch.reactiveSummary.status.cancelled');
+        case 'running': return t('dispatch.reactiveSummary.status.running');
         case 'pending':
         case 'waiting_deps':
-          return '等待中';
+          return t('dispatch.reactiveSummary.status.waiting');
         default:
           return status;
       }
     };
 
     const taskLines = entries.map((entry, index) =>
-      `${index + 1}. [${entry.worker}] ${entry.task} -> ${statusLabel(entry.status)}；${entry.result?.summary || '无结果摘要'}`
+      t('dispatch.reactiveSummary.taskLine', {
+        index: index + 1,
+        worker: entry.worker,
+        task: entry.task,
+        status: statusLabel(entry.status),
+        summary: entry.result?.summary || t('dispatch.reactiveSummary.noResultSummary'),
+      })
     );
 
     const lines = [
-      `Worker 阶段执行完成（自动汇总）：共 ${summary.total} 项，成功 ${summary.completed} 项，失败 ${summary.failed} 项，跳过 ${summary.skipped} 项，取消 ${summary.cancelled} 项。`,
+      t('dispatch.reactiveSummary.header', {
+        total: summary.total,
+        completed: summary.completed,
+        failed: summary.failed,
+        skipped: summary.skipped,
+        cancelled: summary.cancelled,
+      }),
       ...taskLines,
       modifiedFiles.length > 0
-        ? `涉及修改文件：${modifiedFiles.join('，')}`
-        : '涉及修改文件：无',
+        ? t('dispatch.reactiveSummary.modifiedFiles', { files: modifiedFiles.join('，') })
+        : t('dispatch.reactiveSummary.modifiedFilesNone'),
     ];
 
     return lines.join('\n');
@@ -1693,21 +1735,12 @@ export class DispatchManager {
 
       try {
         const batchStatus = batch ? batch.getSummary() : { total: 0 };
-        const prompt = `Worker ${report.workerId} 在执行过程中遇到问题需要决策：
-
-## Worker 上报
-${report.question.content}
-
-## 当前 Batch 状态
-${JSON.stringify(batchStatus)}
-
-## 用户原始需求
-${this.deps.getActiveUserPrompt()}
-
-请决定：
-1. 如果可以给出明确指令帮助 Worker 继续，请给出指令
-2. 如果需要追加新的 Worker，可以调用 dispatch_task
-3. 如果问题需要用户介入，请说明`;
+        const prompt = t('dispatch.phaseBPlus.prompt', {
+          workerId: report.workerId,
+          question: report.question.content,
+          batchStatus: JSON.stringify(batchStatus),
+          userPrompt: this.deps.getActiveUserPrompt(),
+        });
 
         const response = await this.deps.adapterFactory.sendMessage(
           'orchestrator',
@@ -1729,14 +1762,16 @@ ${this.deps.getActiveUserPrompt()}
           });
         }
         if (isBlocking) {
-          const reason = `阻塞问题未获得有效决策：${report.question.content.substring(0, 120)}`;
+          const reason = t('dispatch.phaseBPlus.blockingNoDecision', {
+            question: report.question.content.substring(0, 120),
+          });
           this.deps.messageHub.notify(reason, 'warning');
           return createAbortResponse(reason);
         }
       } catch (error: any) {
         logger.error('Phase B+ 中间调用失败', { error: error.message }, LogCategory.ORCHESTRATOR);
         if (isBlocking) {
-          const reason = `阻塞问题决策失败，已终止当前任务：${error.message}`;
+          const reason = t('dispatch.phaseBPlus.blockingDecisionFailed', { error: error.message });
           this.deps.messageHub.notify(reason, 'warning');
           return createAbortResponse(reason);
         }
@@ -1791,7 +1826,10 @@ ${this.deps.getActiveUserPrompt()}
       wakeupTimeoutMs: 30_000,
       onTimeout: (pendingTaskIds, elapsedMs) => {
         this.deps.messageHub.notify(
-          `wait_for_workers 超时（${Math.round(elapsedMs / 1000)}s），仍有 ${pendingTaskIds.length} 个任务未完成`,
+          t('dispatch.waitForWorkers.timeout', {
+            seconds: Math.round(elapsedMs / 1000),
+            pendingCount: pendingTaskIds.length,
+          }),
           'warning',
         );
       },
@@ -1837,10 +1875,10 @@ ${this.deps.getActiveUserPrompt()}
     collaborationContracts: DispatchCollaborationContracts;
   }): string {
     const lines: string[] = [
-      `## 任务目标\n${input.goal}`,
-      `## 验收标准\n${input.acceptance.map(item => `- ${item}`).join('\n')}`,
-      `## 约束条件\n${input.constraints.map(item => `- ${item}`).join('\n')}`,
-      `## 已知上下文\n${input.context.map(item => `- ${item}`).join('\n')}`,
+      t('dispatch.delegation.goal', { goal: input.goal }),
+      t('dispatch.delegation.acceptance', { acceptance: input.acceptance.map(item => `- ${item}`).join('\n') }),
+      t('dispatch.delegation.constraints', { constraints: input.constraints.map(item => `- ${item}`).join('\n') }),
+      t('dispatch.delegation.context', { context: input.context.map(item => `- ${item}`).join('\n') }),
     ];
 
     if (input.predecessorContext) {
@@ -1848,31 +1886,31 @@ ${this.deps.getActiveUserPrompt()}
     }
 
     if (input.scopeHint && input.scopeHint.length > 0) {
-      lines.push(`## 范围线索（非硬约束）\n${input.scopeHint.map(item => `- ${item}`).join('\n')}`);
+      lines.push(t('dispatch.delegation.scopeHint', { scopeHint: input.scopeHint.map(item => `- ${item}`).join('\n') }));
     }
 
     if (input.files && input.files.length > 0) {
-      lines.push(`## 严格目标文件\n${input.files.map(item => `- ${item}`).join('\n')}`);
+      lines.push(t('dispatch.delegation.strictFiles', { files: input.files.map(item => `- ${item}`).join('\n') }));
     }
 
     const contracts = input.collaborationContracts;
     if (contracts.producerContracts.length > 0 || contracts.consumerContracts.length > 0 || contracts.interfaceContracts.length > 0 || contracts.freezeFiles.length > 0) {
-      lines.push('## 协作契约');
+      lines.push(t('dispatch.delegation.contractsHeader'));
       if (contracts.producerContracts.length > 0) {
-        lines.push(`- 生产契约: ${contracts.producerContracts.join('、')}`);
+        lines.push(t('dispatch.delegation.producerContracts', { contracts: contracts.producerContracts.join('、') }));
       }
       if (contracts.consumerContracts.length > 0) {
-        lines.push(`- 消费契约: ${contracts.consumerContracts.join('、')}`);
+        lines.push(t('dispatch.delegation.consumerContracts', { contracts: contracts.consumerContracts.join('、') }));
       }
       if (contracts.interfaceContracts.length > 0) {
-        lines.push(`- 接口约定: ${contracts.interfaceContracts.join('；')}`);
+        lines.push(t('dispatch.delegation.interfaceContracts', { contracts: contracts.interfaceContracts.join('；') }));
       }
       if (contracts.freezeFiles.length > 0) {
-        lines.push(`- 冻结文件（禁止修改）: ${contracts.freezeFiles.join('、')}`);
+        lines.push(t('dispatch.delegation.freezeFiles', { files: contracts.freezeFiles.join('、') }));
       }
     }
 
-    lines.push('## 执行要求\n先完成分析与方案判断，再执行实现与验证；禁止机械照搬步骤脚本。');
+    lines.push(t('dispatch.delegation.executionRequirements'));
     return lines.join('\n\n');
   }
 
@@ -1894,13 +1932,18 @@ ${this.deps.getActiveUserPrompt()}
       const depEntry = batch.getEntry(depId);
       if (!depEntry?.result) continue;
 
-      const depSummary = depEntry.result.summary || '无摘要';
-      const depFiles = depEntry.result.modifiedFiles?.join('、') || '无';
-      sections.push(`- **${depId}**（${depEntry.worker}）：${depSummary}；修改文件：${depFiles}`);
+      const depSummary = depEntry.result.summary || t('dispatch.predecessor.noSummary');
+      const depFiles = depEntry.result.modifiedFiles?.join('、') || t('dispatch.predecessor.none');
+      sections.push(t('dispatch.predecessor.item', {
+        depId,
+        worker: depEntry.worker,
+        summary: depSummary,
+        files: depFiles,
+      }));
     }
 
     if (sections.length === 0) return undefined;
-    return `## 前序任务结果\n以下是你依赖的前序任务的执行结果：\n${sections.join('\n')}`;
+    return t('dispatch.predecessor.header', { sections: sections.join('\n') });
   }
 
   private buildScopeHintGuidance(scopeHint?: string[]): string {
@@ -1908,10 +1951,10 @@ ${this.deps.getActiveUserPrompt()}
       return '';
     }
     return [
-      '## 范围线索（非硬约束）',
+      t('dispatch.scopeHint.header'),
       ...scopeHint.map(item => `- ${item}`),
       '',
-      '你应优先从以上线索定位，但可根据任务需要自然扩展范围。',
+      t('dispatch.scopeHint.footer'),
     ].join('\n');
   }
 
@@ -1978,12 +2021,12 @@ ${this.deps.getActiveUserPrompt()}
 
     for (const entry of entries) {
       if (entry.result?.quality?.verificationDegraded) {
-        const warning = entry.result.quality.warnings?.[0] || '验收检查执行异常';
+        const warning = entry.result.quality.warnings?.[0] || t('dispatch.verification.degradedFallbackWarning');
         escalate(
           entry.taskId,
           'watch',
           'verification',
-          `验收检查降级：${warning}`,
+          t('dispatch.audit.issue.verificationDegraded', { warning }),
         );
       }
 
@@ -2000,7 +2043,7 @@ ${this.deps.getActiveUserPrompt()}
             entry.taskId,
             'intervention',
             'scope',
-            `改动超出严格目标文件：${outOfStrictFiles.join('、')}`,
+            t('dispatch.audit.issue.outOfStrictFiles', { files: outOfStrictFiles.join('、') }),
           );
         }
       }
@@ -2014,7 +2057,7 @@ ${this.deps.getActiveUserPrompt()}
             entry.taskId,
             'watch',
             'scope',
-            `改动超出 scope_hint 引导范围：${outOfHintFiles.join('、')}`,
+            t('dispatch.audit.issue.outOfScopeHint', { files: outOfHintFiles.join('、') }),
           );
         }
       }
@@ -2027,7 +2070,7 @@ ${this.deps.getActiveUserPrompt()}
             entry.taskId,
             'intervention',
             'contract',
-            `触碰冻结文件：${touchedFreezeFiles.join('、')}`,
+            t('dispatch.audit.issue.touchedFreezeFiles', { files: touchedFreezeFiles.join('、') }),
           );
         }
       }
@@ -2054,8 +2097,8 @@ ${this.deps.getActiveUserPrompt()}
           const hasAtoB = this.hasDependencyChain(a, b, entryById, new Set());
           const hasBtoA = this.hasDependencyChain(b, a, entryById, new Set());
           if (!hasAtoB && !hasBtoA) {
-            escalate(a, 'intervention', 'cross_task', `与任务 ${b} 在文件 ${file} 产生并行冲突（无依赖串行化）`);
-            escalate(b, 'intervention', 'cross_task', `与任务 ${a} 在文件 ${file} 产生并行冲突（无依赖串行化）`);
+            escalate(a, 'intervention', 'cross_task', t('dispatch.audit.issue.parallelConflict', { taskId: b, file }));
+            escalate(b, 'intervention', 'cross_task', t('dispatch.audit.issue.parallelConflict', { taskId: a, file }));
           }
         }
       }
@@ -2082,15 +2125,19 @@ ${this.deps.getActiveUserPrompt()}
   private buildAuditPromptAppendix(auditOutcome: DispatchAuditOutcome): string {
     const issueLines = auditOutcome.issues
       .map(issue => `- [${issue.level}] ${issue.taskId} (${issue.dimension}): ${issue.detail}`)
-      .join('\n') || '- 无';
+      .join('\n') || t('dispatch.audit.issue.none');
 
     return [
-      '## 程序化审计结果（系统判定）',
-      `总体级别: ${auditOutcome.level}`,
-      `任务分布: 正常 ${auditOutcome.summary.normal}，需关注 ${auditOutcome.summary.watch}，需干预 ${auditOutcome.summary.intervention}`,
-      '问题列表:',
+      t('dispatch.audit.appendix.header'),
+      t('dispatch.audit.appendix.overallLevel', { level: auditOutcome.level }),
+      t('dispatch.audit.appendix.distribution', {
+        normal: auditOutcome.summary.normal,
+        watch: auditOutcome.summary.watch,
+        intervention: auditOutcome.summary.intervention,
+      }),
+      t('dispatch.audit.appendix.issueList'),
       issueLines,
-      '请在总结中严格遵循以上审计结果，不要降级“需干预”项。',
+      t('dispatch.audit.appendix.strictFollow'),
     ].join('\n');
   }
 
@@ -2104,29 +2151,39 @@ ${this.deps.getActiveUserPrompt()}
 
     const interventionLines = interventionIssues.length > 0
       ? interventionIssues.map((issue, index) =>
-        `${index + 1}. ${issue.taskId}（${titleByTaskId.get(issue.taskId) || '未知任务'}）- ${issue.detail}`
+        t('dispatch.audit.report.issueLine', {
+          index: index + 1,
+          taskId: issue.taskId,
+          taskTitle: titleByTaskId.get(issue.taskId) || t('dispatch.audit.report.unknownTask'),
+          detail: issue.detail,
+        })
       ).join('\n')
-      : '无';
+      : t('dispatch.audit.report.none');
 
     const watchLines = watchIssues.length > 0
       ? watchIssues.map((issue, index) =>
-        `${index + 1}. ${issue.taskId}（${titleByTaskId.get(issue.taskId) || '未知任务'}）- ${issue.detail}`
+        t('dispatch.audit.report.issueLine', {
+          index: index + 1,
+          taskId: issue.taskId,
+          taskTitle: titleByTaskId.get(issue.taskId) || t('dispatch.audit.report.unknownTask'),
+          detail: issue.detail,
+        })
       ).join('\n')
-      : '无';
+      : t('dispatch.audit.report.none');
 
     return [
-      '## Phase C 审计结论',
-      '结果：检测到“需干预”问题，已阻断自动交付。',
+      t('dispatch.audit.report.header'),
+      t('dispatch.audit.report.resultBlocked'),
       '',
-      '### 需干预',
+      t('dispatch.audit.report.interventionTitle'),
       interventionLines,
       '',
-      '### 需关注',
+      t('dispatch.audit.report.watchTitle'),
       watchLines,
       '',
-      '### 建议动作',
-      '1. 对需干预任务追加修复任务（建议串行化并补充 contracts.freeze_files / depends_on）',
-      '2. 重新执行后再进入 Phase C 汇总',
+      t('dispatch.audit.report.suggestedActionsTitle'),
+      t('dispatch.audit.report.action1'),
+      t('dispatch.audit.report.action2'),
     ].join('\n');
   }
 

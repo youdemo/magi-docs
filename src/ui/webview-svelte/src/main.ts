@@ -3,12 +3,14 @@ import App from './App.svelte';
 import './styles/global.css';
 import './styles/messages.css';
 import { initMessageHandler } from './lib/message-handler';
-import { getInitialSessionId, vscode } from './lib/vscode-bridge';
+import { getInitialLocale, getInitialSessionId, vscode } from './lib/vscode-bridge';
 import { setCurrentSessionId } from './stores/messages.svelte';
+import { i18n } from './stores/i18n.svelte';
 
 declare global {
   interface Window {
     __MAGI_WEBVIEW_BOOTED__?: boolean;
+    __INITIAL_LOCALE__?: string;
   }
 }
 
@@ -21,6 +23,10 @@ if (window.__MAGI_WEBVIEW_BOOTED__) {
 
   // 初始化 sessionId（从扩展宿主注入的值）
   const initialSessionId = getInitialSessionId();
+  const initialLocale = getInitialLocale();
+  if (initialLocale) {
+    i18n.setLocale(initialLocale);
+  }
   if (initialSessionId) {
     setCurrentSessionId(initialSessionId);
     console.log('[Main] 初始 sessionId:', initialSessionId);

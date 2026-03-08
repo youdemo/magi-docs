@@ -10,6 +10,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { LocaleCode, DEFAULT_LOCALE } from '../i18n/types';
 
 /**
  * 上下文配置
@@ -69,6 +70,8 @@ export interface OrchestratorConfig {
  * 完整配置接口
  */
 export interface MagiConfig {
+  /** 界面语言 */
+  locale: LocaleCode;
   context: ContextConfig;
   task: TaskConfig;
   snapshot: SnapshotConfig;
@@ -79,6 +82,7 @@ export interface MagiConfig {
  * 默认配置
  */
 export const DEFAULT_CONFIG: MagiConfig = {
+  locale: DEFAULT_LOCALE,
   context: {
     maxTokens: 8000,
     immediateContextRounds: 5,
@@ -188,6 +192,7 @@ export class ConfigManager {
    */
   private mergeConfig(base: MagiConfig, override: Partial<MagiConfig>): MagiConfig {
     return {
+      locale: override.locale ?? base.locale,
       context: { ...base.context, ...override.context },
       task: { ...base.task, ...override.task },
       snapshot: { ...base.snapshot, ...override.snapshot },

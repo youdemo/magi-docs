@@ -7,6 +7,7 @@
     type Notification,
   } from '../stores/messages.svelte';
   import Icon from './Icon.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
   const appState = getState();
 
@@ -36,7 +37,7 @@
 
   function formatTime(timestamp: number): string {
     const d = new Date(timestamp);
-    return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    return d.toLocaleTimeString(i18n.locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
   function getTypeIcon(type: string): 'check' | 'close' | 'warning' | 'info' {
@@ -50,7 +51,7 @@
 </script>
 
 <div class="notification-center">
-  <button class="btn-icon btn-icon--sm notification-btn" onclick={togglePanel} title="通知中心">
+  <button class="btn-icon btn-icon--sm notification-btn" onclick={togglePanel} title={i18n.t('notification.buttonTitle')}>
     <Icon name="bell" size={14} />
     {#if unreadCount > 0}
       <span class="badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
@@ -62,12 +63,12 @@
     <div class="panel-backdrop" onclick={closePanel} role="presentation"></div>
     <div class="notification-panel">
       <div class="panel-header">
-        <span class="panel-title">通知中心</span>
+        <span class="panel-title">{i18n.t('notification.title')}</span>
         <div class="panel-actions">
           {#if notifications.length > 0}
-            <button class="btn-text" onclick={handleClearAll} title="清空所有">清空</button>
+            <button class="btn-text" onclick={handleClearAll} title={i18n.t('notification.clearAllTitle')}>{i18n.t('notification.clearAll')}</button>
           {/if}
-          <button class="btn-icon btn-icon--xs" onclick={closePanel} title="关闭">
+          <button class="btn-icon btn-icon--xs" onclick={closePanel} title={i18n.t('notification.closeTitle')}>
             <Icon name="close" size={12} />
           </button>
         </div>
@@ -76,7 +77,7 @@
         {#if notifications.length === 0}
           <div class="empty-state">
             <Icon name="bell" size={24} />
-            <span>暂无通知</span>
+            <span>{i18n.t('notification.empty')}</span>
           </div>
         {:else}
           {#each notifications as notif (notif.id)}
@@ -91,7 +92,7 @@
                 <div class="notif-message">{notif.message}</div>
                 <div class="notif-time">{formatTime(notif.timestamp)}</div>
               </div>
-              <button class="notif-remove" onclick={() => handleRemove(notif.id)} title="删除">
+              <button class="notif-remove" onclick={() => handleRemove(notif.id)} title={i18n.t('notification.removeTitle')}>
                 <Icon name="close" size={10} />
               </button>
             </div>

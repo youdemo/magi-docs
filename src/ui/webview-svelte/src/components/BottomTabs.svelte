@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getState } from '../stores/messages.svelte';
   import Icon from './Icon.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
   interface Props {
     activeTab: 'thread' | 'claude' | 'codex' | 'gemini';
@@ -42,7 +43,7 @@
     onclick={() => onTabChange('thread')}
   >
     <Icon name="chat" size={12} />
-    主线
+    {i18n.t('bottomTabs.thread')}
   </button>
   <button
     class="bt-tab bt-worker"

@@ -2,6 +2,7 @@
   import Icon from './Icon.svelte';
   import { setCurrentBottomTab } from '../stores/messages.svelte';
   import type { IconName } from '../lib/icons';
+  import { i18n } from '../stores/i18n.svelte';
 
   /** 单个 Worker 完成结果 */
   interface WorkerResult {
@@ -54,11 +55,11 @@
   }
 
   // 状态配置
-  const statusMap: Record<string, { icon: IconName; label: string; colorVar: string }> = {
-    completed: { icon: 'check-circle', label: '完成', colorVar: '--success' },
-    failed: { icon: 'x-circle', label: '失败', colorVar: '--error' },
-    skipped: { icon: 'skip-forward', label: '跳过', colorVar: '--foreground-muted' },
-    cancelled: { icon: 'x', label: '取消', colorVar: '--warning' },
+  const statusMap: Record<string, { icon: IconName; labelKey: string; colorVar: string }> = {
+    completed: { icon: 'check-circle', labelKey: 'waitResultCard.status.completed', colorVar: '--success' },
+    failed: { icon: 'x-circle', labelKey: 'waitResultCard.status.failed', colorVar: '--error' },
+    skipped: { icon: 'skip-forward', labelKey: 'waitResultCard.status.skipped', colorVar: '--foreground-muted' },
+    cancelled: { icon: 'x', labelKey: 'waitResultCard.status.cancelled', colorVar: '--warning' },
   };
 
   const isAllCompleted = $derived(data.wait_status === 'completed' && !data.timed_out);
@@ -68,10 +69,10 @@
   const waitedSeconds = $derived((data.waited_ms / 1000).toFixed(1));
 
   // 审计等级配色
-  const auditColorMap: Record<string, { colorVar: string; icon: IconName; label: string }> = {
-    normal: { colorVar: '--success', icon: 'check-circle', label: '正常' },
-    watch: { colorVar: '--warning', icon: 'alert-triangle', label: '关注' },
-    intervention: { colorVar: '--error', icon: 'alert-circle', label: '需介入' },
+  const auditColorMap: Record<string, { colorVar: string; icon: IconName; labelKey: string }> = {
+    normal: { colorVar: '--success', icon: 'check-circle', labelKey: 'waitResultCard.audit.normal' },
+    watch: { colorVar: '--warning', icon: 'alert-triangle', labelKey: 'waitResultCard.audit.watch' },
+    intervention: { colorVar: '--error', icon: 'alert-circle', labelKey: 'waitResultCard.audit.intervention' },
   };
 
   function handleWorkerClick(workerName: string) {
@@ -87,14 +88,14 @@
   <div class="result-header" class:timeout={!isAllCompleted}>
     <div class="header-left">
       <Icon name={isAllCompleted ? 'check-circle' : 'alert-triangle'} size={16} />
-      <span class="header-title">{isAllCompleted ? '任务完成报告' : '任务等待超时'}</span>
+      <span class="header-title">{isAllCompleted ? i18n.t('waitResultCard.reportTitle') : i18n.t('waitResultCard.timeoutTitle')}</span>
     </div>
     <div class="header-right">
       {#if totalCount > 1}
-        <span class="header-stat">{successCount}/{totalCount} 完成</span>
+        <span class="header-stat">{i18n.t('waitResultCard.completedStat', { success: successCount, total: totalCount })}</span>
       {/if}
       {#if failCount > 0}
-        <span class="header-stat fail">{failCount} 失败</span>
+        <span class="header-stat fail">{i18n.t('waitResultCard.failedStat', { count: failCount })}</span>
       {/if}
       <span class="header-time"><Icon name="clock" size={12} />{waitedSeconds}s</span>
     </div>
@@ -120,7 +121,7 @@
           </div>
           <span class="item-status" style="color: var({sm.colorVar})">
             <Icon name={sm.icon} size={12} />
-            <span>{sm.label}</span>
+            <span>{i18n.t(sm.labelKey)}</span>
           </span>
         </div>
         {#if result.summary}
@@ -128,10 +129,10 @@
         {/if}
         <div class="item-meta">
           {#if result.modified_files && result.modified_files.length > 0}
-            <span class="meta-tag"><Icon name="file" size={11} />{result.modified_files.length} 文件变更</span>
+            <span class="meta-tag"><Icon name="file" size={11} />{i18n.t('waitResultCard.fileChangeCount', { count: result.modified_files.length })}</span>
           {/if}
           {#if result.errors && result.errors.length > 0}
-            <span class="meta-tag error"><Icon name="alert-circle" size={11} />{result.errors.length} 错误</span>
+            <span class="meta-tag error"><Icon name="alert-circle" size={11} />{i18n.t('waitResultCard.errorCount', { count: result.errors.length })}</span>
           {/if}
           {#if wt !== 'default'}
             <span class="jump-hint"><Icon name="chevron-right" size={12} /></span>
@@ -145,7 +146,7 @@
   {#if data.pending_task_ids && data.pending_task_ids.length > 0}
     <div class="pending-section">
       <Icon name="hourglass" size={12} />
-      <span>仍在等待 {data.pending_task_ids.length} 个任务</span>
+      <span>{i18n.t('waitResultCard.pendingTasks', { count: data.pending_task_ids.length })}</span>
     </div>
   {/if}
 
@@ -155,7 +156,7 @@
     <div class="audit-section" style="--audit-color: var({auditConfig.colorVar})">
       <div class="audit-header">
         <Icon name={auditConfig.icon} size={13} />
-        <span class="audit-label">审计结论: {auditConfig.label}</span>
+        <span class="audit-label">{i18n.t('waitResultCard.audit.label')} {i18n.t(auditConfig.labelKey)}</span>
       </div>
       {#if data.audit.issues && data.audit.issues.length > 0}
         <div class="audit-issues">

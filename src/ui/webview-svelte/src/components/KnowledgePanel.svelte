@@ -4,6 +4,7 @@
   import { MessageCategory } from '../../../../protocol/message-protocol';
   import { ensureArray } from '../lib/utils';
   import Icon from './Icon.svelte';
+  import { i18n } from '../stores/i18n.svelte';
 
   // 知识类型定义
   interface CodeIndex {
@@ -156,10 +157,10 @@
   // ADR 状态的显示文本
   function statusLabel(status?: string): string {
     const map: Record<string, string> = {
-      proposed: '提议中',
-      accepted: '已接受',
-      archived: '已归档',
-      superseded: '已替代',
+      proposed: i18n.t('knowledge.adr.statusProposed'),
+      accepted: i18n.t('knowledge.adr.statusAccepted'),
+      archived: i18n.t('knowledge.adr.statusArchived'),
+      superseded: i18n.t('knowledge.adr.statusSuperseded'),
     };
     return status ? (map[status] || status) : '';
   }
@@ -199,38 +200,38 @@
   <div class="kp-tabs-bar">
     <button class="kp-tab" class:active={currentTab === 'overview'} onclick={() => switchTab('overview')}>
       <Icon name="stats" size={13} />
-      <span>概览</span>
+      <span>{i18n.t('knowledge.tabs.overview')}</span>
     </button>
     <button class="kp-tab" class:active={currentTab === 'adr'} onclick={() => switchTab('adr')}>
       <Icon name="document" size={13} />
-      <span>ADR</span>
+      <span>{i18n.t('knowledge.tabs.adr')}</span>
       {#if adrs.length > 0}
         <span class="kp-tab-count">{adrs.length}</span>
       {/if}
     </button>
     <button class="kp-tab" class:active={currentTab === 'faq'} onclick={() => switchTab('faq')}>
       <Icon name="question" size={13} />
-      <span>FAQ</span>
+      <span>{i18n.t('knowledge.tabs.faq')}</span>
       {#if faqs.length > 0}
         <span class="kp-tab-count">{faqs.length}</span>
       {/if}
     </button>
     <button class="kp-tab" class:active={currentTab === 'learning'} onclick={() => switchTab('learning')}>
       <Icon name="lightbulb" size={13} />
-      <span>经验</span>
+      <span>{i18n.t('knowledge.tabs.learning')}</span>
       {#if learnings.length > 0}
         <span class="kp-tab-count">{learnings.length}</span>
       {/if}
     </button>
     <div class="kp-tab-actions">
-      <button class="kp-icon-btn" onclick={refresh} disabled={isLoading} title="刷新">
+      <button class="kp-icon-btn" onclick={refresh} disabled={isLoading} title={i18n.t('knowledge.actions.refreshTitle')}>
         <Icon name="refresh" size={14} class={isLoading ? 'spinning' : ''} />
       </button>
       <button
         class="kp-icon-btn kp-icon-btn--danger"
         onclick={confirmClear}
         disabled={isLoading || (adrs.length === 0 && faqs.length === 0 && learnings.length === 0)}
-        title="清空知识库"
+        title={i18n.t('knowledge.actions.clearTitle')}
       >
         <Icon name="delete" size={14} />
       </button>
@@ -244,7 +245,7 @@
       <input
         type="text"
         class="kp-search-input"
-        placeholder={currentTab === 'adr' ? '搜索架构决策...' : currentTab === 'faq' ? '搜索常见问题...' : '搜索经验记录...'}
+        placeholder={currentTab === 'adr' ? i18n.t('knowledge.search.adrPlaceholder') : currentTab === 'faq' ? i18n.t('knowledge.search.faqPlaceholder') : i18n.t('knowledge.search.learningPlaceholder')}
         bind:value={searchQuery}
       />
       {#if searchQuery}
@@ -262,13 +263,13 @@
         <div class="kp-confirm-icon">
           <Icon name="warning" size={24} />
         </div>
-        <div class="kp-confirm-title">确认清空知识库</div>
+        <div class="kp-confirm-title">{i18n.t('knowledge.confirm.title')}</div>
         <p class="kp-confirm-desc">
-          将清空所有 ADR（{adrs.length}）、FAQ（{faqs.length}）和经验记录。此操作不可撤销。
+          {i18n.t('knowledge.confirm.desc', { adrCount: adrs.length, faqCount: faqs.length })}
         </p>
         <div class="kp-confirm-actions">
-          <button class="kp-confirm-btn kp-confirm-btn--cancel" onclick={cancelClear}>取消</button>
-          <button class="kp-confirm-btn kp-confirm-btn--danger" onclick={executeClear}>确认清空</button>
+          <button class="kp-confirm-btn kp-confirm-btn--cancel" onclick={cancelClear}>{i18n.t('knowledge.confirm.cancel')}</button>
+          <button class="kp-confirm-btn kp-confirm-btn--danger" onclick={executeClear}>{i18n.t('knowledge.confirm.confirm')}</button>
         </div>
       </div>
     </div>
@@ -279,7 +280,7 @@
     {#if isLoading}
       <div class="kp-loading">
         <div class="kp-spinner"></div>
-        <span>加载中...</span>
+        <span>{i18n.t('knowledge.loading')}</span>
       </div>
     {:else if currentTab === 'overview'}
       <!-- 概览 -->
@@ -288,27 +289,27 @@
         <div class="kp-stats-row">
           <div class="kp-stat">
             <span class="kp-stat-value">{fileCount.toLocaleString()}</span>
-            <span class="kp-stat-label">文件</span>
+            <span class="kp-stat-label">{i18n.t('knowledge.overview.files')}</span>
           </div>
           <div class="kp-stat-divider"></div>
           <div class="kp-stat">
             <span class="kp-stat-value">{totalLines.toLocaleString()}</span>
-            <span class="kp-stat-label">代码行</span>
+            <span class="kp-stat-label">{i18n.t('knowledge.overview.lines')}</span>
           </div>
           <div class="kp-stat-divider"></div>
           <div class="kp-stat">
             <span class="kp-stat-value">{adrs.length}</span>
-            <span class="kp-stat-label">ADR</span>
+            <span class="kp-stat-label">{i18n.t('knowledge.overview.adr')}</span>
           </div>
           <div class="kp-stat-divider"></div>
           <div class="kp-stat">
             <span class="kp-stat-value">{faqs.length}</span>
-            <span class="kp-stat-label">FAQ</span>
+            <span class="kp-stat-label">{i18n.t('knowledge.overview.faq')}</span>
           </div>
           <div class="kp-stat-divider"></div>
           <div class="kp-stat">
             <span class="kp-stat-value">{learnings.length}</span>
-            <span class="kp-stat-label">经验</span>
+            <span class="kp-stat-label">{i18n.t('knowledge.tabs.learning')}</span>
           </div>
         </div>
 
@@ -316,7 +317,7 @@
           <div class="kp-section">
             <h4 class="kp-section-title">
               <Icon name="code" size={13} />
-              <span>技术栈</span>
+              <span>{i18n.t('knowledge.overview.techStack')}</span>
             </h4>
             <div class="kp-tech-grid">
               {#each codeIndex.techStack as tech}
@@ -330,7 +331,7 @@
           <div class="kp-section">
             <h4 class="kp-section-title">
               <Icon name="target" size={13} />
-              <span>入口文件</span>
+              <span>{i18n.t('knowledge.overview.entryPoints')}</span>
             </h4>
             <div class="kp-entry-list">
               {#each codeIndex.entryPoints as entry}
@@ -348,8 +349,8 @@
           <div class="kp-section">
             <h4 class="kp-section-title">
               <Icon name="document" size={13} />
-              <span>最近的决策</span>
-              <button class="kp-section-link" onclick={() => switchTab('adr')}>查看全部</button>
+              <span>{i18n.t('knowledge.overview.recentDecisions')}</span>
+              <button class="kp-section-link" onclick={() => switchTab('adr')}>{i18n.t('knowledge.overview.viewAll')}</button>
             </h4>
             {#each adrs.slice(0, 3) as adr (adr.id)}
               <div class="kp-preview-item">
@@ -367,7 +368,7 @@
     {:else if currentTab === 'adr'}
       <!-- ADR Tab -->
       <div class="kp-filter-bar">
-        {#each [['all', '全部'], ['proposed', '提议中'], ['accepted', '已接受'], ['archived', '已归档'], ['superseded', '已替代']] as [value, label]}
+        {#each [['all', i18n.t('knowledge.adr.filterAll')], ['proposed', i18n.t('knowledge.adr.statusProposed')], ['accepted', i18n.t('knowledge.adr.statusAccepted')], ['archived', i18n.t('knowledge.adr.statusArchived')], ['superseded', i18n.t('knowledge.adr.statusSuperseded')]] as [value, label]}
           <button class="kp-filter-chip" class:active={adrFilter === value} onclick={() => adrFilter = value as any}>{label}</button>
         {/each}
       </div>
@@ -375,8 +376,8 @@
         {#if filteredAdrs.length === 0}
           <div class="kp-empty">
             <Icon name="document" size={28} />
-            <div class="kp-empty-title">暂无架构决策记录</div>
-            <div class="kp-empty-hint">Agent 完成任务后会自动提取并归档</div>
+            <div class="kp-empty-title">{i18n.t('knowledge.adr.emptyTitle')}</div>
+            <div class="kp-empty-hint">{i18n.t('knowledge.adr.emptyHint')}</div>
           </div>
         {:else}
           {#each filteredAdrs as adr (adr.id)}
@@ -394,7 +395,7 @@
                   {#if adr.status}
                     <span class="kp-status-badge {adr.status}">{statusLabel(adr.status)}</span>
                   {/if}
-                  <button class="kp-card-delete" title="删除" onclick={(e) => deleteAdr(adr.id, e)}>
+                  <button class="kp-card-delete" title={i18n.t('knowledge.adr.deleteTitle')} onclick={(e) => deleteAdr(adr.id, e)}>
                     <Icon name="trash" size={12} />
                   </button>
                   <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={12} />
@@ -410,19 +411,19 @@
                   {/if}
                   {#if adr.context}
                     <div class="kp-detail-block">
-                      <h5>上下文</h5>
+                      <h5>{i18n.t('knowledge.adr.context')}</h5>
                       <p>{adr.context}</p>
                     </div>
                   {/if}
                   {#if adr.decision}
                     <div class="kp-detail-block">
-                      <h5>决策</h5>
+                      <h5>{i18n.t('knowledge.adr.decision')}</h5>
                       <p>{adr.decision}</p>
                     </div>
                   {/if}
                   {#if adr.consequences}
                     <div class="kp-detail-block">
-                      <h5>后果</h5>
+                      <h5>{i18n.t('knowledge.adr.consequences')}</h5>
                       <p>{adr.consequences}</p>
                     </div>
                   {/if}
@@ -446,8 +447,8 @@
         {#if filteredFaqs.length === 0}
           <div class="kp-empty">
             <Icon name="question" size={28} />
-            <div class="kp-empty-title">暂无常见问题</div>
-            <div class="kp-empty-hint">Agent 完成任务后会自动提取并归档</div>
+            <div class="kp-empty-title">{i18n.t('knowledge.faq.emptyTitle')}</div>
+            <div class="kp-empty-hint">{i18n.t('knowledge.faq.emptyHint')}</div>
           </div>
         {:else}
           {#each filteredFaqs as faq (faq.id)}
@@ -465,7 +466,7 @@
                   {#if faq.category}
                     <span class="kp-category-badge">{faq.category}</span>
                   {/if}
-                  <button class="kp-card-delete" title="删除" onclick={(e) => deleteFaq(faq.id, e)}>
+                  <button class="kp-card-delete" title={i18n.t('knowledge.faq.deleteTitle')} onclick={(e) => deleteFaq(faq.id, e)}>
                     <Icon name="trash" size={12} />
                   </button>
                   <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={12} />
@@ -498,8 +499,8 @@
         {#if filteredLearnings.length === 0}
           <div class="kp-empty">
             <Icon name="lightbulb" size={28} />
-            <div class="kp-empty-title">暂无经验记录</div>
-            <div class="kp-empty-hint">Agent 完成任务后会自动提取并归档</div>
+            <div class="kp-empty-title">{i18n.t('knowledge.learning.emptyTitle')}</div>
+            <div class="kp-empty-hint">{i18n.t('knowledge.learning.emptyHint')}</div>
           </div>
         {:else}
           {#each filteredLearnings as learning (learning.id)}
@@ -517,7 +518,7 @@
                   {#if learning.createdAt}
                     <span class="kp-category-badge">{new Date(learning.createdAt).toLocaleDateString()}</span>
                   {/if}
-                  <button class="kp-card-delete" title="删除" onclick={(e) => deleteLearning(learning.id, e)}>
+                  <button class="kp-card-delete" title={i18n.t('knowledge.learning.deleteTitle')} onclick={(e) => deleteLearning(learning.id, e)}>
                     <Icon name="trash" size={12} />
                   </button>
                   <Icon name={isExpanded ? 'chevron-up' : 'chevron-down'} size={12} />
@@ -530,7 +531,7 @@
                   </div>
                   {#if learning.context}
                     <div class="kp-detail-block">
-                      <h5>上下文</h5>
+                      <h5>{i18n.t('knowledge.learning.context')}</h5>
                       <p>{learning.context}</p>
                     </div>
                   {/if}

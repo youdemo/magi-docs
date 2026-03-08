@@ -11,6 +11,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { t } from '../i18n';
 
 // 持久化存储的面板数据
 interface MermaidPanelState {
@@ -43,7 +44,7 @@ export class MermaidPanel {
     // 如果已有面板，更新内容并显示
     if (MermaidPanel.currentPanel) {
       MermaidPanel.currentPanel._code = code;
-      MermaidPanel.currentPanel._title = title || 'Mermaid 图表';
+      MermaidPanel.currentPanel._title = title || t('mermaid.panelTitle');
       MermaidPanel.currentPanel._panel.reveal(column);
       MermaidPanel.currentPanel._update();
       MermaidPanel.currentPanel._saveState();
@@ -53,7 +54,7 @@ export class MermaidPanel {
     // 创建新面板
     const panel = vscode.window.createWebviewPanel(
       MermaidPanel.viewType,
-      title || 'Mermaid 图表',
+      title || t('mermaid.panelTitle'),
       column || vscode.ViewColumn.One,
       {
         enableScripts: true,
@@ -77,7 +78,7 @@ export class MermaidPanel {
       async deserializeWebviewPanel(webviewPanel: vscode.WebviewPanel, state: MermaidPanelState) {
         // 恢复面板
         if (state && state.code) {
-          webviewPanel.title = state.title || 'Mermaid 图表';
+          webviewPanel.title = state.title || t('mermaid.panelTitle');
           MermaidPanel.currentPanel = new MermaidPanel(
             webviewPanel,
             context.extensionUri,
@@ -98,7 +99,7 @@ export class MermaidPanel {
     this._panel = panel;
     this._extensionUri = extensionUri;
     this._code = code;
-    this._title = title || 'Mermaid 图表';
+    this._title = title || t('mermaid.panelTitle');
 
     // 初始化 webview 内容
     this._update();
@@ -129,7 +130,7 @@ export class MermaidPanel {
             this._exportDiagram(message.format, message.data);
             break;
           case 'error':
-            vscode.window.showErrorMessage(`Mermaid 渲染失败: ${message.error}`);
+            vscode.window.showErrorMessage(t('mermaid.toast.renderFailed', { error: message.error }));
             break;
         }
       },
@@ -195,9 +196,9 @@ export class MermaidPanel {
           const base64Data = data.replace(/^data:image\/png;base64,/, '');
           fs.writeFileSync(uri.fsPath, Buffer.from(base64Data, 'base64'));
         }
-        vscode.window.showInformationMessage(`图表已保存: ${uri.fsPath}`);
+        vscode.window.showInformationMessage(t('mermaid.toast.saved', { path: uri.fsPath }));
       } catch (error) {
-        vscode.window.showErrorMessage(`保存失败: ${error}`);
+        vscode.window.showErrorMessage(t('mermaid.toast.saveFailed', { error: String(error) }));
       }
     }
   }
@@ -523,7 +524,7 @@ export class MermaidPanel {
       <span class="header-title" id="title"></span>
     </div>
     <div class="header-actions">
-      <button class="header-btn" id="copy-svg" title="复制 SVG">
+      <button class="header-btn" id="copy-svg" title="${escapeHtml(t('mermaidRenderer.copySvg'))}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -536,7 +537,7 @@ export class MermaidPanel {
   <div class="mermaid-content" id="container">
     <div class="loading" id="loading">
       <span class="spinner"></span>
-      <span>渲染中...</span>
+      <span>${escapeHtml(t('mermaidRenderer.rendering'))}</span>
     </div>
   </div>
 
@@ -545,15 +546,15 @@ export class MermaidPanel {
 
   <!-- 浮动控制按钮 -->
   <div class="floating-controls" id="controls" style="display: none;">
-    <button class="control-btn" id="zoom-in" title="放大">+</button>
-    <button class="control-btn" id="zoom-out" title="缩小">−</button>
-    <button class="control-btn" id="zoom-reset" title="重置视图">↻</button>
-    <button class="control-btn" id="show-code" title="复制代码">{ }</button>
+    <button class="control-btn" id="zoom-in" title="${escapeHtml(t('mermaidRenderer.zoomIn'))}">+</button>
+    <button class="control-btn" id="zoom-out" title="${escapeHtml(t('mermaidRenderer.zoomOut'))}">−</button>
+    <button class="control-btn" id="zoom-reset" title="${escapeHtml(t('mermaidRenderer.resetView'))}">↻</button>
+    <button class="control-btn" id="show-code" title="${escapeHtml(t('mermaid.copyCode'))}">{ }</button>
   </div>
 
   <!-- 导出按钮 -->
   <div class="export-controls" id="export-controls" style="display: none;">
-    <button class="export-btn" id="export-svg">导出 SVG</button>
+    <button class="export-btn" id="export-svg">${escapeHtml(t('mermaid.exportSvg'))}</button>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js" nonce="${nonce}"></script>
@@ -710,18 +711,18 @@ export class MermaidPanel {
     // 检测图表类型
     function detectDiagramType(code) {
       const typePatterns = [
-        [/^\\s*flowchart/mi, '流程图'],
-        [/^\\s*graph/mi, '流程图'],
-        [/^\\s*sequenceDiagram/mi, '时序图'],
-        [/^\\s*classDiagram/mi, '类图'],
-        [/^\\s*stateDiagram/mi, '状态图'],
-        [/^\\s*erDiagram/mi, 'ER 图'],
-        [/^\\s*gantt/mi, '甘特图'],
-        [/^\\s*pie/mi, '饼图'],
-        [/^\\s*journey/mi, '用户旅程'],
-        [/^\\s*gitGraph/mi, 'Git 图'],
-        [/^\\s*mindmap/mi, '思维导图'],
-        [/^\\s*timeline/mi, '时间线'],
+        [/^\\s*flowchart/mi, '${escapeHtml(t('mermaidRenderer.diagramType.flowchart'))}'],
+        [/^\\s*graph/mi, '${escapeHtml(t('mermaidRenderer.diagramType.flowchart'))}'],
+        [/^\\s*sequenceDiagram/mi, '${escapeHtml(t('mermaidRenderer.diagramType.sequence'))}'],
+        [/^\\s*classDiagram/mi, '${escapeHtml(t('mermaidRenderer.diagramType.class'))}'],
+        [/^\\s*stateDiagram/mi, '${escapeHtml(t('mermaidRenderer.diagramType.state'))}'],
+        [/^\\s*erDiagram/mi, '${escapeHtml(t('mermaidRenderer.diagramType.er'))}'],
+        [/^\\s*gantt/mi, '${escapeHtml(t('mermaidRenderer.diagramType.gantt'))}'],
+        [/^\\s*pie/mi, '${escapeHtml(t('mermaidRenderer.diagramType.pie'))}'],
+        [/^\\s*journey/mi, '${escapeHtml(t('mermaidRenderer.diagramType.journey'))}'],
+        [/^\\s*gitGraph/mi, '${escapeHtml(t('mermaidRenderer.diagramType.git'))}'],
+        [/^\\s*mindmap/mi, '${escapeHtml(t('mermaidRenderer.diagramType.mindmap'))}'],
+        [/^\\s*timeline/mi, '${escapeHtml(t('mermaidRenderer.diagramType.timeline'))}'],
       ];
 
       for (const [pattern, type] of typePatterns) {
@@ -792,8 +793,8 @@ export class MermaidPanel {
         // 保存状态用于持久化
         vscode.setState({ code: code, title: title || '' });
       } catch (e) {
-        loading.innerHTML = '<div class="error"><span class="error-title">渲染失败</span><pre class="error-message">' + escapeHtml(e.message || '未知错误') + '</pre></div>';
-        vscode.postMessage({ type: 'error', error: e.message || '未知错误' });
+        loading.innerHTML = '<div class="error"><span class="error-title">${escapeHtml(t('mermaidRenderer.renderFailed'))}</span><pre class="error-message">' + escapeHtml(e.message || '${escapeHtml(t('mermaid.unknownError'))}') + '</pre></div>';
+        vscode.postMessage({ type: 'error', error: e.message || '${escapeHtml(t('mermaid.unknownError'))}' });
       }
     }
 

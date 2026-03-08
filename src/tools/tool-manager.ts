@@ -621,7 +621,7 @@ export class ToolManager extends EventEmitter implements ToolExecutor {
         if (signal?.aborted) {
           return finalize({
             toolCallId: toolCall.id,
-            content: '任务已中断',
+            content: 'Task aborted',
             isError: true,
           });
         }
@@ -652,7 +652,7 @@ export class ToolManager extends EventEmitter implements ToolExecutor {
           const available = this.builtinToolNames.join(', ');
           return finalize({
             toolCallId: toolCall.id,
-            content: `工具 '${toolCall.name}' 不存在。只能使用以下工具: ${available}。请直接使用已有工具完成任务。`,
+            content: `Tool '${toolCall.name}' does not exist. You may only use the following tools: ${available}. Please use the available tools directly to complete the task.`,
             isError: true,
           });
         }
@@ -680,7 +680,7 @@ export class ToolManager extends EventEmitter implements ToolExecutor {
             }, LogCategory.TOOLS);
             return finalize({
               toolCallId: toolCall.id,
-              content: `工具不可用：Skill 运行时未启用或加载失败（${normalizedToolCall.name}）。请在设置中启用并安装对应 Skill 后重试。`,
+              content: `Tool unavailable: Skill runtime is not enabled or failed to load (${normalizedToolCall.name}). Please enable and install the corresponding Skill in settings, then retry.`,
               isError: true,
             });
           }
@@ -831,7 +831,7 @@ export class ToolManager extends EventEmitter implements ToolExecutor {
     if (hasFailureSignal && (lower.includes('"status":"killed"') || lower.includes('"killed":true') || /\bkilled\b/.test(lower))) {
       return 'killed';
     }
-    if (hasFailureSignal && (lower.includes('aborterror') || /\baborted\b/.test(lower) || lower.includes('任务已中断'))) {
+    if (hasFailureSignal && (lower.includes('aborterror') || /\baborted\b/.test(lower) || lower.includes('task aborted'))) {
       return 'aborted';
     }
 
@@ -1132,63 +1132,63 @@ export class ToolManager extends EventEmitter implements ToolExecutor {
 
     // 内置工具描述映射（中文用途说明）
     const builtinToolDescriptions: Record<string, { category: string; desc: string }> = {
-      'file_view': { category: '文件操作', desc: '查看文件内容或浏览目录结构' },
-      'file_create': { category: '文件操作', desc: '创建新文件或写入完整文件内容' },
-      'file_edit': { category: '文件操作', desc: '精确替换文件中的文本' },
-      'file_insert': { category: '文件操作', desc: '在指定行插入文本' },
-      'file_remove': { category: '文件操作', desc: '删除文件' },
-      'grep_search': { category: '文件操作', desc: '正则搜索代码内容' },
-      'launch-process': { category: '终端命令', desc: '执行构建/测试/启动服务等进程，也可用于 sed/python/node 脚本批量编辑文件（单文件精确编辑优先用 file_edit）' },
-      'read-process': { category: '终端命令', desc: '读取终端进程输出' },
-      'write-process': { category: '终端命令', desc: '向运行中的终端写入输入' },
-      'kill-process': { category: '终端命令', desc: '终止终端进程' },
-      'list-processes': { category: '终端命令', desc: '列出所有终端进程' },
-      'web_search': { category: '网络工具', desc: '搜索互联网信息' },
-      'web_fetch': { category: '网络工具', desc: '获取 URL 页面内容' },
-      'codebase_retrieval': { category: '代码智能', desc: '本地语义检索代码库' },
-      'mermaid_diagram': { category: '可视化', desc: '生成 Mermaid 图表' },
-      'split_todo': { category: '任务管理', desc: '将当前任务拆分为多个子步骤' },
-      'get_todos': { category: '任务管理', desc: '查看当前任务的 Todo 列表' },
-      'update_todo': { category: '任务管理', desc: '更新 Todo 状态或内容' },
+      'file_view': { category: 'File Operations', desc: 'View file contents or browse directory structure' },
+      'file_create': { category: 'File Operations', desc: 'Create a new file or write complete file contents' },
+      'file_edit': { category: 'File Operations', desc: 'Precisely replace text in a file' },
+      'file_insert': { category: 'File Operations', desc: 'Insert text at a specific line' },
+      'file_remove': { category: 'File Operations', desc: 'Delete a file' },
+      'grep_search': { category: 'File Operations', desc: 'Regex search through code content' },
+      'launch-process': { category: 'Terminal Commands', desc: 'Run build/test/server processes; also usable for batch file edits via sed/python/node scripts (prefer file_edit for single-file precise edits)' },
+      'read-process': { category: 'Terminal Commands', desc: 'Read terminal process output' },
+      'write-process': { category: 'Terminal Commands', desc: 'Write input to a running terminal' },
+      'kill-process': { category: 'Terminal Commands', desc: 'Terminate a terminal process' },
+      'list-processes': { category: 'Terminal Commands', desc: 'List all terminal processes' },
+      'web_search': { category: 'Web Tools', desc: 'Search the internet for information' },
+      'web_fetch': { category: 'Web Tools', desc: 'Fetch URL page content' },
+      'codebase_retrieval': { category: 'Code Intelligence', desc: 'Local semantic search across the codebase' },
+      'mermaid_diagram': { category: 'Visualization', desc: 'Generate Mermaid diagrams' },
+      'split_todo': { category: 'Task Management', desc: 'Split the current task into multiple sub-steps' },
+      'get_todos': { category: 'Task Management', desc: 'View the todo list for the current task' },
+      'update_todo': { category: 'Task Management', desc: 'Update todo status or content' },
     };
 
     // 编排者专用的附加说明
     const orchestratorNotes: Record<string, string> = {
-      'file_edit': '（编排者限改 3 个文件内的简单修改，复杂修改委派 Worker）',
-      'file_create': '（编排者限 3 个文件内）',
-      'file_insert': '（编排者限 3 个文件内）',
-      'file_remove': '（编排者限 3 个文件内）',
+      'file_edit': ' (orchestrator limited to simple edits within 3 files; delegate complex edits to a Worker)',
+      'file_create': ' (orchestrator limited to 3 files)',
+      'file_insert': ' (orchestrator limited to 3 files)',
+      'file_remove': ' (orchestrator limited to 3 files)',
     };
 
     const lines: string[] = [];
 
     // 内置工具：按类别分组
-    lines.push('内置工具:');
-    const categoryOrder = ['文件操作', '终端命令', '网络工具', '代码智能', '可视化', '任务管理'];
+    lines.push('Built-in Tools:');
+    const categoryOrder = ['File Operations', 'Terminal Commands', 'Web Tools', 'Code Intelligence', 'Visualization', 'Task Management'];
     for (const category of categoryOrder) {
       const categoryTools = Object.entries(builtinToolDescriptions)
         .filter(([name, v]) => v.category === category && visibleBuiltinToolNames.has(name));
       if (categoryTools.length > 0) {
         const toolList = categoryTools.map(([name, v]) => {
           const note = role === 'orchestrator' ? (orchestratorNotes[name] || '') : '';
-          return `${name}（${v.desc}${note}）`;
-        }).join('、');
-        lines.push(`- ${category}：${toolList}`);
+          return `${name} (${v.desc}${note})`;
+        }).join(', ');
+        lines.push(`- ${category}: ${toolList}`);
       }
     }
 
     // 动态发现新增的未映射内置工具
     const unmappedTools = builtinTools.filter(t => !builtinToolDescriptions[t.name]);
     for (const tool of unmappedTools) {
-      const desc = tool.description ? tool.description.split(/[。\n]/)[0].substring(0, 60) : '';
-      lines.push(`- 其他：${tool.name}（${desc}）`);
+      const desc = tool.description ? tool.description.split(/[.\n]/)[0].substring(0, 60) : '';
+      lines.push(`- Other: ${tool.name} (${desc})`);
     }
 
     // MCP 工具
     const mcpTools = tools.filter(t => t.metadata?.source === 'mcp');
     if (mcpTools.length > 0) {
       lines.push('');
-      lines.push('MCP 扩展工具（用户已安装，可直接调用）:');
+      lines.push('MCP Extension Tools (installed by user, can be called directly):');
       for (const tool of mcpTools) {
         const desc = tool.description ? ` - ${tool.description.substring(0, 80)}` : '';
         lines.push(`- ${tool.name}${desc}`);
@@ -1199,7 +1199,7 @@ export class ToolManager extends EventEmitter implements ToolExecutor {
     const skillTools = tools.filter(t => t.metadata?.source === 'skill');
     if (skillTools.length > 0) {
       lines.push('');
-      lines.push('Skill 自定义工具（用户已安装，可直接调用）:');
+      lines.push('Skill Custom Tools (installed by user, can be called directly):');
       for (const tool of skillTools) {
         const desc = tool.description ? ` - ${tool.description.substring(0, 80)}` : '';
         lines.push(`- ${tool.name}${desc}`);
@@ -1249,19 +1249,19 @@ After a mutating command, refresh each target file with file_view once before fi
         input_schema: {
           type: 'object',
           properties: {
-            command: { type: 'string', description: '要执行的 shell 命令（不要在 command 中写 cd，目录请通过 cwd 传递）' },
-            cwd: { type: 'string', description: '命令执行目录。单工作区可省略（自动使用工作区根目录）；多工作区必须显式指定 "<工作区名>" 或 "<工作区名>/相对路径"' },
-            wait: { type: 'boolean', description: '是否等待进程完成（默认 true）' },
-            run_mode: { type: 'string', description: '运行模式：task（一次性命令）或 service（长驻服务）。默认规则：wait=true -> task，wait=false -> service；对 dev/start/serve/watch 等长驻命令会自动推断为 service。', enum: ['task', 'service'] },
-            max_wait_seconds: { type: 'number', description: '空闲超时秒数（距最近一次输出超过该值则判定超时，默认 30）' },
-            startup_wait_seconds: { type: 'number', description: '仅 service 模式生效。wait=true 时用于启动握手等待秒数（默认 5）。' },
+            command: { type: 'string', description: 'Shell command to execute (do not use cd in the command; pass the directory via the cwd parameter instead)' },
+            cwd: { type: 'string', description: 'Working directory for the command. Can be omitted in single-workspace setups (defaults to workspace root); must be explicitly specified as "<workspace-name>" or "<workspace-name>/relative-path" in multi-workspace setups' },
+            wait: { type: 'boolean', description: 'Whether to wait for the process to complete (default: true)' },
+            run_mode: { type: 'string', description: 'Execution mode: "task" (one-shot command) or "service" (long-running daemon). Default rules: wait=true -> task, wait=false -> service; long-running commands like dev/start/serve/watch are auto-inferred as service.', enum: ['task', 'service'] },
+            max_wait_seconds: { type: 'number', description: 'Idle timeout in seconds — if no output is produced within this duration, the wait is considered timed out (default: 30)' },
+            startup_wait_seconds: { type: 'number', description: 'Service mode only. When wait=true, the number of seconds to wait for the startup handshake (default: 5).' },
             ready_patterns: {
               type: 'array',
-              description: '仅 service 模式生效。可选的就绪日志正则字符串数组，命中后 phase 进入 ready。',
+              description: 'Service mode only. Optional array of regex strings for ready-log detection; when matched, the phase transitions to ready.',
               items: { type: 'string' },
             },
-            showTerminal: { type: 'boolean', description: '是否显示终端窗口（默认 true）' },
-            may_modify_files: { type: 'boolean', description: '命令是否会直接修改后续要编辑的源文件。仅在确实会改文件时设为 true；ls/cat/grep/git status 等只读命令应保持 false。默认 false（系统也会做有限启发式检测）。' },
+            showTerminal: { type: 'boolean', description: 'Whether to show the terminal window (default: true)' },
+            may_modify_files: { type: 'boolean', description: 'Whether this command directly modifies source files that may be edited later. Set to true only when the command actually writes files; keep false for read-only commands like ls/cat/grep/git status. Default: false (the system also applies limited heuristic detection).' },
           },
           required: ['command'],
         },
@@ -1282,10 +1282,10 @@ Typical workflow for background services:
         input_schema: {
           type: 'object',
           properties: {
-            terminal_id: { type: 'number', description: 'terminal_id（来自 launch-process）' },
-            wait: { type: 'boolean', description: '是否等待状态变化（默认 false）' },
-            max_wait_seconds: { type: 'number', description: '空闲超时秒数（距最近一次输出超过该值则判定超时，默认 30）' },
-            from_cursor: { type: 'number', description: '增量读取起始游标。传上一次返回的 next_cursor 只读取新增输出。' },
+            terminal_id: { type: 'number', description: 'terminal_id (from launch-process)' },
+            wait: { type: 'boolean', description: 'Whether to wait for status change (default: false)' },
+            max_wait_seconds: { type: 'number', description: 'Idle timeout in seconds — if no output is produced within this duration, the wait is considered timed out (default: 30)' },
+            from_cursor: { type: 'number', description: 'Incremental read cursor. Pass the previous next_cursor value to read only newly appended output.' },
           },
           required: ['terminal_id'],
         },
@@ -1297,8 +1297,8 @@ Only works when the process is in "running" state; returns accepted=false otherw
         input_schema: {
           type: 'object',
           properties: {
-            terminal_id: { type: 'number', description: 'terminal_id（来自 launch-process）' },
-            input_text: { type: 'string', description: '写入终端的文本' },
+            terminal_id: { type: 'number', description: 'terminal_id (from launch-process)' },
+            input_text: { type: 'string', description: 'Text to write to the terminal' },
           },
           required: ['terminal_id', 'input_text'],
         },
@@ -1309,7 +1309,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
         input_schema: {
           type: 'object',
           properties: {
-            terminal_id: { type: 'number', description: 'terminal_id（来自 launch-process）' },
+            terminal_id: { type: 'number', description: 'terminal_id (from launch-process)' },
           },
           required: ['terminal_id'],
         },
@@ -1396,7 +1396,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
       return {
         command: null,
         cwd: '',
-        error: 'command 参数必须是非空字符串',
+        error: 'The command parameter must be a non-empty string',
       };
     }
 
@@ -1409,7 +1409,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
       return {
         command: null,
         cwd: '',
-        error: heredocCheck.error || 'heredoc 语法校验失败',
+        error: heredocCheck.error || 'Heredoc syntax validation failed',
       };
     }
 
@@ -1423,7 +1423,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
         return {
           command: null,
           cwd: '',
-          error: 'command 中的 cd 后缺少实际可执行命令',
+          error: 'No executable command found after cd in the command string',
         };
       }
 
@@ -1431,7 +1431,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
         return {
           command: null,
           cwd: '',
-          error: `cwd 参数与 command 内联 cd 冲突（cwd="${cwd}" vs cd "${inlineCwd}"）`,
+          error: `cwd parameter conflicts with inline cd in command (cwd="${cwd}" vs cd "${inlineCwd}")`,
         };
       }
 
@@ -1441,7 +1441,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
       return {
         command: null,
         cwd: '',
-        error: '不要在 command 中单独执行 cd；请把目录写入 cwd，command 仅保留实际命令',
+        error: 'Do not use cd alone in the command; pass the directory via the cwd parameter and keep only the actual command in the command field',
       };
     }
 
@@ -1465,7 +1465,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
       if (firstNewlineIndex < 0) {
         return {
           valid: false,
-          error: `heredoc 缺少结束标记（${delimiter}）。请确保命令包含独立一行的结束符`,
+          error: `Heredoc missing closing delimiter (${delimiter}). Ensure the command contains the terminator on its own line`,
         };
       }
 
@@ -1478,7 +1478,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
       if (!terminatorRegex.test(payload)) {
         return {
           valid: false,
-          error: `heredoc 未闭合（结束标记 ${delimiter} 未找到）。请补全结束符，或改用 file_create/file_edit/file_insert`,
+          error: `Heredoc not closed (closing delimiter ${delimiter} not found). Please add the closing delimiter, or use file_create/file_edit/file_insert instead`,
         };
       }
     }
@@ -1498,14 +1498,14 @@ Only works when the process is in "running" state; returns accepted=false otherw
       if (!resolved?.absolutePath) {
         return {
           absolutePath: null,
-          error: `cwd "${inputPath}" 不存在，或不在当前工作区内`,
+          error: `cwd "${inputPath}" does not exist or is not within the current workspace`,
         };
       }
       return { absolutePath: resolved.absolutePath };
     } catch (error: any) {
       return {
         absolutePath: null,
-        error: `cwd "${inputPath}" 解析失败: ${error?.message || String(error)}`,
+        error: `cwd "${inputPath}" resolution failed: ${error?.message || String(error)}`,
       };
     }
   }
@@ -1514,7 +1514,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
     if (rawCwd !== undefined && rawCwd !== null && typeof rawCwd !== 'string') {
       return {
         absolutePath: null,
-        error: 'cwd 参数类型错误，必须是字符串',
+        error: 'cwd parameter type error: must be a string',
       };
     }
 
@@ -1523,14 +1523,14 @@ Only works when the process is in "running" state; returns accepted=false otherw
     const workspaceNames = workspaceFolders.map(folder => folder.name);
     const requestedCwd = typeof rawCwd === 'string' ? rawCwd.trim() : '';
     const workspaceHint = hasMultipleRoots
-      ? `可用工作区: ${workspaceNames.join('、')}。请使用 "<工作区名>" 或 "<工作区名>/相对路径"，不要使用固定系统路径（如 /home/user）。`
-      : '请使用当前工作区内路径。';
+      ? `Available workspaces: ${workspaceNames.join(', ')}. Use "<workspace-name>" or "<workspace-name>/relative-path" instead of hardcoded system paths (e.g. /home/user).`
+      : 'Please use a path within the current workspace.';
 
     if (!requestedCwd) {
       if (hasMultipleRoots) {
         return {
           absolutePath: null,
-          error: `多工作区必须显式指定 cwd。${workspaceHint}`,
+          error: `Multi-workspace requires explicit cwd. ${workspaceHint}`,
         };
       }
       return this.resolveLaunchProcessWorkspacePath('.', this.workspaceRoot);
@@ -1543,7 +1543,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
       }
       return {
         absolutePath: null,
-        error: `cwd "${requestedCwd}" 不在当前工作区内，或目录不存在。${workspaceHint}`,
+        error: `cwd "${requestedCwd}" is not within the current workspace, or the directory does not exist. ${workspaceHint}`,
       };
     }
 
@@ -1560,7 +1560,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
       if (!hasWorkspacePrefix) {
         return {
           absolutePath: null,
-          error: `多工作区 cwd 必须显式包含工作区名。${workspaceHint}`,
+          error: `Multi-workspace cwd must include a workspace name prefix. ${workspaceHint}`,
         };
       }
     }
@@ -1587,7 +1587,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
 
     return {
       terminalName: null,
-      error: `未知 workerId "${workerId}"，仅支持 orchestrator、claude、gemini、codex`,
+      error: `Unknown workerId "${workerId}"; only orchestrator, claude, gemini, and codex are supported`,
     };
   }
 
@@ -1785,35 +1785,35 @@ Only works when the process is in "running" state; returns accepted=false otherw
     if (!normalized.command) {
       return {
         toolCallId: toolCall.id,
-        content: `Command rejected: ${normalized.error || 'command 参数错误'}`,
+        content: `Command rejected: ${normalized.error || 'Invalid command parameter'}`,
         isError: true,
       };
     }
     if (args.wait !== undefined && typeof args.wait !== 'boolean') {
       return {
         toolCallId: toolCall.id,
-        content: 'Command rejected: wait 参数类型错误，必须是 boolean',
+        content: 'Command rejected: wait parameter type error, must be a boolean',
         isError: true,
       };
     }
     if (rawRunMode !== undefined && rawRunMode !== 'task' && rawRunMode !== 'service') {
       return {
         toolCallId: toolCall.id,
-        content: 'Command rejected: run_mode 参数错误，只能是 "task" 或 "service"',
+        content: 'Command rejected: run_mode parameter error, must be "task" or "service"',
         isError: true,
       };
     }
     if (args.max_wait_seconds !== undefined && (typeof args.max_wait_seconds !== 'number' || !Number.isFinite(args.max_wait_seconds))) {
       return {
         toolCallId: toolCall.id,
-        content: 'Command rejected: max_wait_seconds 参数类型错误，必须是 number',
+        content: 'Command rejected: max_wait_seconds parameter type error, must be a number',
         isError: true,
       };
     }
     if (startup_wait_seconds !== undefined && (typeof startup_wait_seconds !== 'number' || !Number.isFinite(startup_wait_seconds) || startup_wait_seconds < 0)) {
       return {
         toolCallId: toolCall.id,
-        content: 'Command rejected: startup_wait_seconds 参数类型错误，必须是 >= 0 的 number',
+        content: 'Command rejected: startup_wait_seconds parameter type error, must be a number >= 0',
         isError: true,
       };
     }
@@ -1823,21 +1823,21 @@ Only works when the process is in "running" state; returns accepted=false otherw
     ) {
       return {
         toolCallId: toolCall.id,
-        content: 'Command rejected: ready_patterns 参数类型错误，必须是 string[]',
+        content: 'Command rejected: ready_patterns parameter type error, must be a string[]',
         isError: true,
       };
     }
     if (args.showTerminal !== undefined && typeof args.showTerminal !== 'boolean') {
       return {
         toolCallId: toolCall.id,
-        content: 'Command rejected: showTerminal 参数类型错误，必须是 boolean',
+        content: 'Command rejected: showTerminal parameter type error, must be a boolean',
         isError: true,
       };
     }
     if (args.may_modify_files !== undefined && typeof args.may_modify_files !== 'boolean') {
       return {
         toolCallId: toolCall.id,
-        content: 'Command rejected: may_modify_files 参数类型错误，必须是 boolean',
+        content: 'Command rejected: may_modify_files parameter type error, must be a boolean',
         isError: true,
       };
     }
@@ -1940,14 +1940,14 @@ Only works when the process is in "running" state; returns accepted=false otherw
     if (terminal_id === undefined || typeof terminal_id !== 'number') {
       return {
         toolCallId: toolCall.id,
-        content: 'read-process rejected: terminal_id 参数缺失或类型错误，必须是 number',
+        content: 'read-process rejected: terminal_id parameter missing or type error, must be a number',
         isError: true,
       };
     }
     if (args.wait !== undefined && typeof args.wait !== 'boolean') {
       return {
         toolCallId: toolCall.id,
-        content: 'read-process rejected: wait 参数类型错误，必须是 boolean',
+        content: 'read-process rejected: wait parameter type error, must be a boolean',
         isError: true,
       };
     }
@@ -1957,14 +1957,14 @@ Only works when the process is in "running" state; returns accepted=false otherw
     ) {
       return {
         toolCallId: toolCall.id,
-        content: 'read-process rejected: max_wait_seconds 参数类型错误，必须是 number',
+        content: 'read-process rejected: max_wait_seconds parameter type error, must be a number',
         isError: true,
       };
     }
     if (from_cursor !== undefined && (!Number.isInteger(from_cursor) || from_cursor < 0)) {
       return {
         toolCallId: toolCall.id,
-        content: 'read-process rejected: from_cursor 参数类型错误，必须是 >= 0 的整数',
+        content: 'read-process rejected: from_cursor parameter type error, must be an integer >= 0',
         isError: true,
       };
     }
@@ -1987,14 +1987,14 @@ Only works when the process is in "running" state; returns accepted=false otherw
     if (terminal_id === undefined || typeof terminal_id !== 'number') {
       return {
         toolCallId: toolCall.id,
-        content: 'write-process rejected: terminal_id 参数缺失或类型错误，必须是 number',
+        content: 'write-process rejected: terminal_id parameter missing or type error, must be a number',
         isError: true,
       };
     }
     if (input_text === undefined || typeof input_text !== 'string') {
       return {
         toolCallId: toolCall.id,
-        content: 'write-process rejected: input_text 参数缺失或类型错误，必须是 string',
+        content: 'write-process rejected: input_text parameter missing or type error, must be a string',
         isError: true,
       };
     }
@@ -2014,7 +2014,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
     if (terminal_id === undefined || typeof terminal_id !== 'number') {
       return {
         toolCallId: toolCall.id,
-        content: 'kill-process rejected: terminal_id 参数缺失或类型错误，必须是 number',
+        content: 'kill-process rejected: terminal_id parameter missing or type error, must be a number',
         isError: true,
       };
     }
@@ -2124,7 +2124,7 @@ Only works when the process is in "running" state; returns accepted=false otherw
     }
 
     const lines = folders.map(folder => `  - ${folder.name}: ${folder.path}`);
-    return `多工作区:\n${lines.join('\n')}`;
+    return `Multi-workspace:\n${lines.join('\n')}`;
   }
 
   /**

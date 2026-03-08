@@ -12,6 +12,7 @@
   import MarkdownContent from './components/MarkdownContent.svelte';
   import { vscode } from './lib/vscode-bridge';
   import { getState, setCurrentTopTab, setIsProcessing } from './stores/messages.svelte';
+  import { i18n } from './stores/i18n.svelte';
 
   type TopTabType = 'thread' | 'tasks' | 'edits' | 'knowledge';
 
@@ -133,18 +134,18 @@
     <div class="modal-overlay" role="presentation">
       <div class="modal-dialog plan-confirm-dialog" role="dialog" aria-modal="true" tabindex="-1">
         <div class="modal-header">
-          <h3>执行计划确认</h3>
+          <h3>{i18n.t('app.planConfirmTitle')}</h3>
         </div>
         <div class="modal-body">
           {#if pendingConfirmation.formattedPlan}
             <MarkdownContent content={pendingConfirmation.formattedPlan} />
           {:else}
-            <p>需要确认执行计划，是否继续？</p>
+            <p>{i18n.t('app.planConfirmDefault')}</p>
           {/if}
         </div>
         <div class="modal-footer">
-          <button class="modal-btn secondary" onclick={() => confirmPlan(false)}>取消</button>
-          <button class="modal-btn primary" onclick={() => confirmPlan(true)}>确认执行</button>
+          <button class="modal-btn secondary" onclick={() => confirmPlan(false)}>{i18n.t('app.planCancel')}</button>
+          <button class="modal-btn primary" onclick={() => confirmPlan(true)}>{i18n.t('app.planConfirm')}</button>
         </div>
       </div>
     </div>
@@ -154,18 +155,18 @@
     <div class="modal-overlay" role="presentation">
       <div class="modal-dialog" role="dialog" aria-modal="true" tabindex="-1">
         <div class="modal-header">
-          <h3>恢复策略确认</h3>
+          <h3>{i18n.t('app.recoveryTitle')}</h3>
         </div>
         <div class="modal-body">
-          <p>任务执行失败，需要选择恢复策略：</p>
+          <p>{i18n.t('app.recoveryMessage')}</p>
           {#if pendingRecovery.error}
             <pre class="modal-pre">{String(pendingRecovery.error)}</pre>
           {/if}
         </div>
         <div class="modal-footer">
-          <button class="modal-btn secondary" onclick={() => confirmRecovery('continue')}>继续</button>
-          <button class="modal-btn secondary" disabled={!pendingRecovery.canRollback} onclick={() => confirmRecovery('rollback')}>回滚</button>
-          <button class="modal-btn primary" disabled={!pendingRecovery.canRetry} onclick={() => confirmRecovery('retry')}>重试</button>
+          <button class="modal-btn secondary" onclick={() => confirmRecovery('continue')}>{i18n.t('app.recoveryContinue')}</button>
+          <button class="modal-btn secondary" disabled={!pendingRecovery.canRollback} onclick={() => confirmRecovery('rollback')}>{i18n.t('app.recoveryRollback')}</button>
+          <button class="modal-btn primary" disabled={!pendingRecovery.canRetry} onclick={() => confirmRecovery('retry')}>{i18n.t('app.recoveryRetry')}</button>
         </div>
       </div>
     </div>
@@ -175,7 +176,7 @@
     <div class="modal-overlay" role="presentation">
       <div class="modal-dialog" role="dialog" aria-modal="true" tabindex="-1">
         <div class="modal-header">
-          <h3>澄清问题</h3>
+          <h3>{i18n.t('app.clarificationTitle')}</h3>
         </div>
         <div class="modal-body">
           {#if pendingClarification.context}
@@ -186,11 +187,11 @@
               <li>{q}</li>
             {/each}
           </ol>
-          <textarea class="modal-textarea" bind:value={clarificationAnswer} placeholder="请输入补充信息..."></textarea>
+          <textarea class="modal-textarea" bind:value={clarificationAnswer} placeholder={i18n.t('app.clarificationPlaceholder')}></textarea>
         </div>
         <div class="modal-footer">
-          <button class="modal-btn secondary" onclick={() => submitClarification(true)}>取消</button>
-          <button class="modal-btn primary" onclick={() => submitClarification(false)}>提交</button>
+          <button class="modal-btn secondary" onclick={() => submitClarification(true)}>{i18n.t('app.clarificationCancel')}</button>
+          <button class="modal-btn primary" onclick={() => submitClarification(false)}>{i18n.t('app.clarificationSubmit')}</button>
         </div>
       </div>
     </div>
@@ -200,15 +201,15 @@
     <div class="modal-overlay" role="presentation">
       <div class="modal-dialog" role="dialog" aria-modal="true" tabindex="-1">
         <div class="modal-header">
-          <h3>{pendingWorkerQuestion.workerId} 提问</h3>
+          <h3>{i18n.t('app.workerQuestionTitle', { workerId: pendingWorkerQuestion.workerId })}</h3>
         </div>
         <div class="modal-body">
           <p>{pendingWorkerQuestion.question}</p>
-          <textarea class="modal-textarea" bind:value={workerQuestionAnswer} placeholder="请输入回答..."></textarea>
+          <textarea class="modal-textarea" bind:value={workerQuestionAnswer} placeholder={i18n.t('app.workerQuestionPlaceholder')}></textarea>
         </div>
         <div class="modal-footer">
-          <button class="modal-btn secondary" onclick={() => submitWorkerQuestion(true)}>取消</button>
-          <button class="modal-btn primary" onclick={() => submitWorkerQuestion(false)}>提交</button>
+          <button class="modal-btn secondary" onclick={() => submitWorkerQuestion(true)}>{i18n.t('app.workerQuestionCancel')}</button>
+          <button class="modal-btn primary" onclick={() => submitWorkerQuestion(false)}>{i18n.t('app.workerQuestionSubmit')}</button>
         </div>
       </div>
     </div>
@@ -218,15 +219,15 @@
     <div class="modal-overlay" role="presentation">
       <div class="modal-dialog" role="dialog" aria-modal="true" tabindex="-1">
         <div class="modal-header">
-          <h3>工具授权请求</h3>
+          <h3>{i18n.t('app.toolAuthTitle')}</h3>
         </div>
         <div class="modal-body">
-          <p>工具: <strong>{pendingToolAuthorization.toolName}</strong></p>
+          <p>{i18n.t('app.toolAuthToolLabel')}<strong>{pendingToolAuthorization.toolName}</strong></p>
           <pre class="modal-pre">{JSON.stringify(pendingToolAuthorization.toolArgs, null, 2)}</pre>
         </div>
         <div class="modal-footer">
-          <button class="modal-btn secondary" onclick={() => respondToolAuthorization(false)}>拒绝</button>
-          <button class="modal-btn primary" onclick={() => respondToolAuthorization(true)}>允许</button>
+          <button class="modal-btn secondary" onclick={() => respondToolAuthorization(false)}>{i18n.t('app.toolAuthDeny')}</button>
+          <button class="modal-btn primary" onclick={() => respondToolAuthorization(true)}>{i18n.t('app.toolAuthAllow')}</button>
         </div>
       </div>
     </div>
